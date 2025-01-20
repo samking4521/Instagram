@@ -1,23 +1,28 @@
 import { useState, useEffect, useRef, useMemo } from "react"
-import { SafeAreaView, View, Text, TextInput, Pressable, Keyboard, ScrollView, StyleSheet, useWindowDimensions} from "react-native"
+import { SafeAreaView, View, Text, TextInput, Pressable, Keyboard, ScrollView, StyleSheet, ActivityIndicator} from "react-native"
 import { AntDesign, MaterialIcons } from '@expo/vector-icons'
+import { confirmSignUp, resendSignUpCode, signIn, getCurrentUser} from "aws-amplify/auth";
 import { router, useLocalSearchParams } from "expo-router"
 import BottomSheet, {BottomSheetView} from '@gorhom/bottom-sheet';
 // import LinearGradient from 'react-native-linear-gradient';
+import type { Schema } from '../../../amplify/data/resource'
+import { generateClient } from 'aws-amplify/data'
+
+const client = generateClient<Schema>()
 
 export default function ConfirmCode(){
     const [showConfirmCodeText, setShowConfirmCodeText] = useState(false)
     const [keyboardVisible, setKeyboardVisible] = useState(false);
     const [confirmCode, setConfirmCode] = useState('')
+    const [showConfirmCodeErrorText, setShowConfirmCodeErrorText] = useState<string | null>(null)
     const [openBottomSheet, setOpenBottomSheet] = useState(false)
+    const [showLoadingIndicator, setShowLoadingIndicator] = useState(false)
+    const [codeResent, setCodeResent] = useState(false)
     const labelRef = useRef<TextInput>(null)
-    const {height} = useWindowDimensions()
-    const { mobileNo, email } = useLocalSearchParams()
+    const { mobileNo, email, password } = useLocalSearchParams()
     const snapPoints = useMemo(()=> ['70%'], [])
     const bottomSheetRef = useRef<BottomSheet>(null)
 
-
-console.log(openBottomSheet)
     
     useEffect(() => {
         const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -33,7 +38,167 @@ console.log(openBottomSheet)
           hideSubscription.remove();
         };
       }, []);
+
+      const ConfirmCode = async ()=>{
+        Keyboard.dismiss()
+        if(confirmCode.length >=6){
+            setShowLoadingIndicator(true)
+            confirmationCode()
+        }else if(confirmCode.length == 0){
+            setShowConfirmCodeErrorText('zero')
+        }else{
+           setShowConfirmCodeErrorText('less than 6')
+        }
+           
+      }
+
+      const AutoSignInUser = async()=>{
+        try{
+            if(email){
+                if(typeof email === 'string' && typeof password === 'string'){
+                    const { nextStep } = await signIn({
+                        username: email,
+                        password: password,
+                      });
+                      console.log('nextStep : ', nextStep)
+                      if(nextStep.signInStep === 'DONE'){
+                        console.log('Successfully signed in.');
+                        // get currently authenticated user
+                        const { userId } = await getCurrentUser();
+                        // Create User model and add sub id
+                        const createUserSub = await client.models.User.create({
+                            sub: userId
+                          })
+                       console.log('User sub created successfully : ', createUserSub )
+                        router.push({
+                            pathname: '/(auth)/enterName',
+                            params: {email}
+                        })
+                        setShowLoadingIndicator(false)
+                      }
+                }
+            }else{
+                if(typeof mobileNo === 'string' && typeof password === 'string'){
+                    const { nextStep } = await signIn({
+                        username: mobileNo,
+                        password: password,
+                      });
+                      console.log('nextStep : ', nextStep)
+                      if(nextStep.signInStep === 'DONE'){
+                        console.log('Successfully signed in.');
+                        router.push('/(auth)/enterName')
+                        setShowLoadingIndicator(false)
+                      }
+                }
+            }
+          
+        }catch(e){
+            if(e instanceof Error){
+                console.log('Error signing user in ', e.message)
+            }
+        }
+      }
+
+
+      const confirmationCode = async()=>{
+         try{
+               if(email){
+                    if(typeof email !== 'string'){
+                        return
+                    }
+                    // Confirm sign up with the OTP received
+                const { nextStep: confirmSignUpNextStep } = await confirmSignUp({
+                    username: email,
+                    confirmationCode: confirmCode,
+                });
+
+                if (confirmSignUpNextStep.signUpStep === 'DONE') {
+                    console.log(`SignUp Complete`);
+                    AutoSignInUser()
+                    }
+               }else{
+                    if(typeof mobileNo !== 'string'){
+                        return
+                    }
+
+                    // Confirm sign up with the OTP received
+                const { nextStep: confirmSignUpNextStep } = await confirmSignUp({
+                    username: mobileNo,
+                    confirmationCode: confirmCode,
+                });
+    
+                if (confirmSignUpNextStep.signUpStep === 'COMPLETE_AUTO_SIGN_IN') {
+                    console.log(`SignUp Complete`);
+                    AutoSignInUser()
+                }
+               }
+            
+         }catch(e){
+            if(e instanceof Error){
+                console.log('Error confirming code', e.message)
+                setShowLoadingIndicator(false)
+                setShowConfirmCodeErrorText('Invalid code')
+            }
+         }
+         
+      }
    
+      const updateConfirmCode = (val: string)=>{
+            setConfirmCode(val)
+            if(showConfirmCodeErrorText){
+                setShowConfirmCodeErrorText(null)
+            }
+      }
+
+      const resendCode = ()=>{
+          Keyboard.dismiss()
+          setOpenBottomSheet(true)
+      }
+
+      const resendConfirmationCode = async ()=>{
+        if(email){
+            if(typeof email !== 'string'){
+                return
+            }
+            const { destination, deliveryMedium } = await resendSignUpCode({
+                username: email,
+            });
+            console.log(`A confirmation code has been resent to ${destination}.`);
+            console.log(`Please check your ${deliveryMedium} for the code.`);
+            setCodeResent(true)
+            setOpenBottomSheet(false)
+        }else{
+            if(typeof mobileNo !== 'string'){
+                return
+            }
+            const { destination, deliveryMedium } = await resendSignUpCode({
+                username: mobileNo,
+            });
+            console.log(`A confirmation code has been resent to ${destination}.`);
+            console.log(`Please check your ${deliveryMedium} for the code.`);
+            setCodeResent(true)
+            setOpenBottomSheet(false)
+        }
+      
+        
+      }
+
+      const goToSignUp = ()=>{
+         if(email){
+            router.push('/(auth)/signUp')
+         }else{
+            router.push('/(auth)/signUpEmail')
+         }
+      }
+
+      const changeMedium = ()=>{
+        if(email){
+            router.push('/(auth)/signUpEmail')
+        }else{
+            router.push('/(auth)/signUp')
+        }
+      }
+
     return(
     //     <LinearGradient
     //     colors={['lightgreen', 'lightcoral', 'skyblue']} // Array of colors
@@ -48,23 +213,25 @@ console.log(openBottomSheet)
             
             <View style={{marginTop: 10}}>
                  <Text style={styles.headerText}>Enter the confirmation code?</Text>
-                 <Text style={styles.headerDescText}>To confirm your account enter the 6-digit code we sent via WhatsApp to {mobileNo || email}</Text>
-
-                 <Pressable onPress={()=>{ labelRef.current?.focus(); setShowConfirmCodeText(true)}} style={styles.TextInputContainer}>
+                 <Text style={styles.headerDescText}>{codeResent? `A new 6-digit verification code has been resent to your ${email? 'email' : 'text message'} at ${email || mobileNo}. Please check your ${email? 'email' : 'text message'} and enter the code to proceed.` : `To confirm your account enter the 6-digit code we sent via ${email? 'email' : 'text message'} to ${mobileNo || email}`}</Text>
+                 <Pressable onPress={()=>{ labelRef.current?.focus(); setShowConfirmCodeText(true)}} style={{...styles.TextInputContainer, borderColor: showConfirmCodeErrorText? 'red' : '#4C4C4C' }}>
                    <View style={styles.confirmCodeInputCont}>
-                            { showConfirmCodeText && <Text style={styles.label}>Confirmation code</Text>}
-                            {(!showConfirmCodeText && confirmCode.length == 0) && <Text style={styles.placeholder}>Confirmation code</Text>} 
-                            { showConfirmCodeText && <TextInput ref={labelRef} autoFocus={true} onBlur={()=> confirmCode.length >= 1? setShowConfirmCodeText(true) : setShowConfirmCodeText(false) } cursorColor='black' style={styles.inputBox} keyboardType='decimal-pad' value={confirmCode} onChangeText={setConfirmCode}  />}
+                            { showConfirmCodeText && <Text style={{...styles.label, color: showConfirmCodeErrorText? 'red' : '#4C4C4C' }}>Confirmation code</Text>}
+                            {(!showConfirmCodeText  && confirmCode.length == 0) && <Text style={{...styles.placeholder, color: showConfirmCodeErrorText? 'red' : 'gray'}}>Confirmation code</Text>} 
+                            { showConfirmCodeText && <TextInput ref={labelRef} autoFocus={true} onBlur={()=> confirmCode.length >= 1? setShowConfirmCodeText(true) : setShowConfirmCodeText(false) } cursorColor='black' style={styles.inputBox} keyboardType='decimal-pad' value={confirmCode} onChangeText={updateConfirmCode}  />}
                    </View>
-                  { (confirmCode.length >=1 && keyboardVisible) && <MaterialIcons onPress={()=> setConfirmCode('')} name="clear" size={30} color="#4C4C4C" />}
+                  { (confirmCode.length >=1 && keyboardVisible && !showConfirmCodeErrorText) && <MaterialIcons onPress={()=> setConfirmCode('')} name="clear" size={30} color="#4C4C4C" />}
+                  { showConfirmCodeErrorText && <AntDesign name="exclamationcircleo" size={24} color="red" /> }
+
                  </Pressable>
-            </View>
+                   { showConfirmCodeErrorText && <Text style={{color:"red", letterSpacing: 0.5}}>{showConfirmCodeErrorText == 'zero'? `Code is required. Check your ${email? 'email': 'text message'} to find the code` : showConfirmCodeErrorText == 'less than 6'? 'Confirmation code must be at least 6 characters long' : showConfirmCodeErrorText == 'network'? 'Something went wrong! Check your internet connection or try again later' : 'The confirmation code you entered is incorrect. Please try again.' }</Text>}
+                </View>
 
             <View style={styles.pressableBtnCont}> 
-                <Pressable style={styles.nextBtn}>
-                    <Text style={styles.nextBtnText}>Next</Text>
+                <Pressable onPress={ConfirmCode} style={styles.nextBtn}>
+                    {showLoadingIndicator? <ActivityIndicator color='white' size='small'/> :  <Text style={styles.nextBtnText}>Next</Text>}
                 </Pressable>
-                <Pressable onPress={()=> setOpenBottomSheet(true)} style={styles.mobileBtn}>
+                <Pressable onPress={resendCode} style={styles.mobileBtn}>
                     <Text style={styles.signUpText}>I didn't get the code</Text>
                 </Pressable>
             </View>
@@ -78,21 +245,14 @@ console.log(openBottomSheet)
                      <View style={{ padding: 10, marginHorizontal: 3, marginBottom: 5, flex: 1, backgroundColor:'#F3FAFF', borderBottomLeftRadius: 20, borderBottomRightRadius: 20 }}>
                      <AntDesign onPress={()=> setOpenBottomSheet(false)} name="close" size={30} color="black" />
                      <View style={{backgroundColor:'white', borderRadius: 20, padding: 20, marginTop: 20}}>
-                         <Text style={{fontWeight:"500", letterSpacing: 0.5, fontSize: 17}}>Resend confirmation code</Text>
-                         <Text style={{marginVertical: 25, fontWeight:"500", letterSpacing: 0.5, fontSize: 17}}>Change mobile number</Text>
-                         <Text style={{fontWeight:"500", letterSpacing: 0.5, fontSize: 17}}>Confirm by email</Text>
+                         <Text style={{fontWeight:"500", letterSpacing: 0.5, fontSize: 17}} onPress={()=> resendConfirmationCode()}>Resend confirmation code</Text>
+                         <Text style={{marginVertical: 25, fontWeight:"500", letterSpacing: 0.5, fontSize: 17}} onPress={goToSignUp}>{email? 'Use mobile number instead' : 'Use email instead'}</Text>
+                         <Text style={{fontWeight:"500", letterSpacing: 0.5, fontSize: 17}} onPress={changeMedium}>{email? 'Change email' : 'Change mobile number'}</Text>
                      </View>
                      </View>
                 </BottomSheetView>
-                 
           </BottomSheet>}
-          
         </SafeAreaView>
-
-        
-          
-     
-  
     )
 }
 
@@ -122,8 +282,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         borderWidth: 1, 
         height: 60, 
-        borderRadius: 10, 
-        borderColor:'#4C4C4C', 
+        borderRadius: 10,  
         backgroundColor:'#FFFFFF', 
         marginBottom: 10
     },
@@ -132,7 +291,6 @@ const styles = StyleSheet.create({
         width:'90%'
     },
     label: {
-        color:'#4C4C4C', 
         paddingTop: 5, 
         fontWeight:'500', 
         letterSpacing: 0.2, 
@@ -141,7 +299,6 @@ const styles = StyleSheet.create({
     placeholder: {
         fontSize: 16, 
         fontWeight:'500', 
-        color:'gray', 
         letterSpacing: 0.3
     },
     inputBox: {

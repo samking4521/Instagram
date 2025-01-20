@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { SafeAreaView, View, Text, TextInput, Pressable, Keyboard, ScrollView, Modal, StyleSheet} from "react-native"
+import { SafeAreaView, View, Text, TextInput, Pressable, Keyboard, ScrollView, Modal, StyleSheet, ActivityIndicator} from "react-native"
 import { AntDesign, MaterialIcons } from '@expo/vector-icons'
 import { StatusBar } from "expo-status-bar"
 import { router } from "expo-router"
@@ -9,6 +9,7 @@ export default function SignUpEmail(){
     const [showEmailText, setShowEmailText] = useState(false)
     const [keyboardVisible, setKeyboardVisible] = useState(false);
     const [showModal, setShowModal] = useState(false)
+    const [showEmailError, setShowEmailError] = useState(false)
     const emailRef = useRef<TextInput>(null)
     const [email, setEmail] = useState('')
      
@@ -28,6 +29,31 @@ export default function SignUpEmail(){
         };
       }, []);
    
+      const goToPassword = async ()=>{
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+            if(email.length >= 1 && emailRegex.test(email)){
+               // navigate to password screen 
+                 router.push({
+                    pathname: '/(auth)/createPassword',
+                    params: {email}
+                })
+               
+            }else{
+                Keyboard.dismiss()
+                setShowEmailError(true)
+            }
+      }
+
+      const updateEmail = (emailVal: string)=>{
+                setEmail(emailVal)
+                if(showEmailError){
+                    setShowEmailError(false)
+                }
+      }
+
+     
+
     return(
     //     <LinearGradient
     //     colors={['lightgreen', 'lightcoral', 'skyblue']} // Array of colors
@@ -43,21 +69,20 @@ export default function SignUpEmail(){
                  <Text style={styles.headerText}>What's your email?</Text>
                  <Text style={styles.headerDescText}>Enter the email number where you can be contacted. No one will see this on your profile</Text>
 
-                 <Pressable onPress={()=>{ emailRef.current?.focus(); setShowEmailText(true)}} style={styles.TextInputContainer}>
+                 <Pressable onPress={()=>{ emailRef.current?.focus(); setShowEmailText(true)}} style={{...styles.TextInputContainer, borderColor: showEmailError? 'red' : '#4C4C4C'}}>
                    <View style={styles.emailInputCont}>
-                            { showEmailText && <Text style={styles.label}>Email</Text>}
-                            {(!showEmailText && email.length == 0) && <Text style={styles.placeholder}>Email</Text>} 
-                            { showEmailText && <TextInput ref={emailRef} autoFocus={true} onBlur={()=> email.length >= 1? setShowEmailText(true) : setShowEmailText(false) } cursorColor='black' style={styles.inputBox} keyboardType='email-address' value={email} onChangeText={setEmail}  />}
+                            { showEmailText && <Text style={{...styles.label, color:showEmailError? 'red' : '#4C4C4C'}}>Email</Text>}
+                            {(!showEmailText && email.length == 0) && <Text style={{...styles.placeholder, color: showEmailError? 'red' : 'gray'}}>Email</Text>} 
+                            { showEmailText && <TextInput ref={emailRef} autoFocus={true} onBlur={()=> email.length >= 1? setShowEmailText(true) : setShowEmailText(false) } cursorColor='black' style={styles.inputBox} keyboardType='email-address' value={email} onChangeText={updateEmail}  />}
                    </View>
-                  { (email.length >=1 && keyboardVisible) && <MaterialIcons onPress={()=> setEmail('')} name="clear" size={30} color="#4C4C4C" />}
+                  { (email.length >=1 && keyboardVisible && !showEmailError) && <MaterialIcons onPress={()=> setEmail('')} name="clear" size={30} color="#4C4C4C" />}
+                  { showEmailError && <AntDesign name="exclamationcircleo" size={24} color="red" />}
                  </Pressable>
+                 { showEmailError && <Text style={{color: 'red', letterSpacing: 0.3}}>Enter a valid email address</Text>}
             </View>
 
             <View style={styles.pressableBtnCont}> 
-                <Pressable onPress={()=> router.push({
-                    pathname: '/(auth)/confirmCode',
-                    params: {email}
-                })} style={styles.nextBtn}>
+                <Pressable onPress={goToPassword} style={styles.nextBtn}>
                     <Text style={styles.nextBtnText}>Next</Text>
                 </Pressable>
                 <Pressable onPress={()=> router.push('/(auth)/signUp')} style={styles.mobileBtn}>
@@ -112,7 +137,6 @@ const styles = StyleSheet.create({
         borderWidth: 1, 
         height: 60, 
         borderRadius: 10, 
-        borderColor:'#4C4C4C', 
         backgroundColor:'#FFFFFF', 
         marginBottom: 10
     },
@@ -121,7 +145,6 @@ const styles = StyleSheet.create({
         width:'90%'
     },
     label: {
-        color:'#4C4C4C', 
         paddingTop: 5, 
         fontWeight:'500', 
         letterSpacing: 0.2, 
@@ -130,7 +153,6 @@ const styles = StyleSheet.create({
     placeholder: {
         fontSize: 16, 
         fontWeight:'500', 
-        color:'gray', 
         letterSpacing: 0.3
     },
     inputBox: {

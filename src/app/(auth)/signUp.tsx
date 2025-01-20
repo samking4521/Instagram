@@ -1,17 +1,21 @@
 import { useState, useEffect, useRef } from "react"
-import { SafeAreaView, View, Text, TextInput, Pressable, Keyboard, ScrollView, Modal, StyleSheet} from "react-native"
-import { AntDesign, MaterialIcons } from '@expo/vector-icons'
+import { SafeAreaView, View, Text, Pressable, Keyboard, ScrollView, Modal, StyleSheet} from "react-native"
+import { AntDesign } from '@expo/vector-icons'
 import { StatusBar } from "expo-status-bar"
 import { router } from "expo-router"
+import PhoneInput from "react-native-phone-number-input";
 // import LinearGradient from 'react-native-linear-gradient';
 
 export default function SignUp(){
-    const [showMobileNo, setShowMobileNo] = useState(false)
     const [keyboardVisible, setKeyboardVisible] = useState(false);
     const [showModal, setShowModal] = useState(false)
-    const mobileRef = useRef<TextInput>(null)
     const [mobileNo, setMobileNo] = useState('')
-
+    const [showErrorText, setShowErrorText] = useState<string | null>(null)
+    const [value, setValue] = useState("");
+    const phoneInput = useRef<PhoneInput>(null);
+  
+    console.log(mobileNo)
+    
     useEffect(() => {
         const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
           setKeyboardVisible(true);
@@ -26,7 +30,21 @@ export default function SignUp(){
           hideSubscription.remove();
         };
       }, []);
-   
+
+      const goToPassword = async()=>{
+          if(value.length >=6 && value.length<=15){
+            router.push({
+                pathname: '/(auth)/createPassword',
+                params: {mobileNo}
+            })
+          }else if (value.length == 0) {
+            setShowErrorText('zero')
+          }
+          else{
+            setShowErrorText('less than 6')
+          }
+      }
+  
     return(
     //     <LinearGradient
     //     colors={['lightgreen', 'lightcoral', 'skyblue']} // Array of colors
@@ -41,23 +59,43 @@ export default function SignUp(){
             <View style={{marginTop: 10}}>
                  <Text style={styles.headerText}>What's your mobile number?</Text>
                  <Text style={styles.headerDescText}>Enter the mobile number where you can be contacted. No one will see this on your profile</Text>
-
-                 <Pressable onPress={()=>{ mobileRef.current?.focus(); setShowMobileNo(true)}} style={styles.textInputCont}>
-                   <View style={styles.mobileInputCont}>
-                            { showMobileNo && <Text style={styles.label}>Mobile number</Text>}
-                            {(!showMobileNo && mobileNo.length == 0) && <Text style={styles.placeholder}>Mobile number</Text>} 
-                            { showMobileNo && <TextInput ref={mobileRef} autoFocus={true} onBlur={()=> mobileNo.length >= 1? setShowMobileNo(true) : setShowMobileNo(false) } cursorColor='black' style={styles.inputBox} keyboardType='decimal-pad' value={mobileNo} onChangeText={setMobileNo}  />}
+                 <PhoneInput
+                            ref={phoneInput}
+                            defaultValue={value}
+                            defaultCode="NG"
+                            layout="first"
+                            placeholder="Mobile number"
+                            onChangeText={(text) => {
+                            setValue(text);
+                            if(showErrorText){
+                                setShowErrorText(null)
+                            }
+                            
+                            }}
+                            onChangeFormattedText={(text) => {
+                               setMobileNo(text)
+                            }}
+                            containerStyle={{borderWidth: 2, width: '100%', borderRadius: 5, borderColor: showErrorText? 'red' : 'lightgray', height: 65}}
+                            textContainerStyle={{backgroundColor:'#fff'}}
+                            flagButtonStyle={{borderRightWidth: 1, borderRightColor: showErrorText? 'red':'gray', width: 60, justifyContent:'center', alignItems:'center'}}
+                            autoFocus
+                            
+                 />
+                 {/* <Pressable onPress={()=>{ mobileRef.current?.focus(); setShowMobileNo(true); setShowErrorText(null)}} style={{...styles.textInputCont, borderColor: showErrorText? 'red' : '#4C4C4C'}}> */}
+               
+                   {/* <View style={styles.mobileInputCont}>
+                            { (showMobileNo && !showErrorText) && <Text style={{...styles.label, color: showErrorText? 'red' : '#4C4C4C'}}>Mobile number</Text>}
+                            {((!showMobileNo && mobileNo.length == 0) || showErrorText == 'zero') && <Text style={{...styles.placeholder, color: showErrorText? 'red' : 'gray'}}>Mobile number</Text>} 
+                            { (showMobileNo && !showErrorText) && <TextInput ref={mobileRef} autoFocus={true} onBlur={()=> mobileNo.length >= 1? setShowMobileNo(true) : setShowMobileNo(false) } cursorColor='black' style={styles.inputBox} keyboardType='decimal-pad' value={mobileNo} onChangeText={updateMobileNo}  />}
                    </View>
-                  { (mobileNo.length >=1 && keyboardVisible) && <MaterialIcons onPress={()=> setMobileNo('')} name="clear" size={30} color="#4C4C4C" />}
-                 </Pressable>
-                 <Text style={styles.descText}>You may receive Whatsapp and SMS notifications from us for security and login purposes</Text>
+                  { !showErrorText && <MaterialIcons onPress={()=> setMobileNo('')} name="clear" size={30} color="#4C4C4C" />}
+                    {showErrorText && <AntDesign name="exclamationcircleo" size={24} color="red" />} */}
+                 {/* </Pressable> */}
+                  <Text style={{...styles.descText, color: showErrorText? 'red' : '#4C4C4C', marginTop: 2}}>{showErrorText == 'zero'? 'Mobile number cannot be empty' : showErrorText == 'less than 6'? 'Invalid Number!, Mobile number must be at least 6 digits long.' : 'You may receive Whatsapp and SMS notifications from us for security and login purposes'}</Text>
             </View>
 
             <View style={styles.pressableContainer}> 
-                <Pressable onPress={()=> router.push({
-                    pathname: '/(auth)/confirmCode',
-                    params: {mobileNo}
-                })} style={styles.nextBtn}>
+                <Pressable onPress={goToPassword} style={styles.nextBtn}>
                     <Text style={styles.nextBtnText}>Next</Text>
                 </Pressable>
                 <Pressable onPress={()=> router.push('/(auth)/signUpEmail')} style={styles.emailBtn}>
@@ -112,7 +150,6 @@ const styles = StyleSheet.create({
         borderWidth: 1, 
         height: 60, 
         borderRadius: 10, 
-        borderColor:'#4C4C4C', 
         backgroundColor:'#FFFFFF', 
         marginBottom: 10
     },
@@ -121,7 +158,6 @@ const styles = StyleSheet.create({
         width: '90%'
     },
     label: {
-        color:'#4C4C4C', 
         paddingTop: 5, 
         fontWeight:'500', 
         letterSpacing: 0.2, 
@@ -130,7 +166,6 @@ const styles = StyleSheet.create({
     placeholder: {
         fontSize: 16, 
         fontWeight:'500', 
-        color:'gray', 
         letterSpacing: 0.3
     },
     inputBox: {
@@ -140,7 +175,6 @@ const styles = StyleSheet.create({
     },
     descText: {
         letterSpacing: 0.2, 
-        color:'#4C4C4C'
     },
     pressableContainer: {
         marginTop: 20, 

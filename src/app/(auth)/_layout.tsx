@@ -10,6 +10,12 @@ export default function AuthNavigator(){
             <Stack.Screen name='signUpEmail'/>
             <Stack.Screen name='confirmCode'/>
             <Stack.Screen name='forgotPwd'/>
+            <Stack.Screen name='createPassword'/>
+            <Stack.Screen name='enterBirthday'/>
+            <Stack.Screen name='enterName'/>
+            <Stack.Screen name='createUsername'/>
+            <Stack.Screen name='profilePicture'/>
+            <Stack.Screen name='welcomeScreen'/>
         </Stack>
     )
 }
