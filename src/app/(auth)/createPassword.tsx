@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react"
 import { SafeAreaView, View, Text, TextInput, Pressable, Keyboard, ScrollView, StyleSheet, ActivityIndicator, Modal} from "react-native"
-import { signUp } from 'aws-amplify/auth';
+import { signUp, resendSignUpCode, signIn } from 'aws-amplify/auth';
 import { AntDesign, Feather } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // import LinearGradient from 'react-native-linear-gradient';
 
@@ -17,6 +18,19 @@ export default function CreatePassword(){
     const TxtInputContRef = useRef(null)
     const { email, mobileNo } = useLocalSearchParams()
 
+    const storeData = async (value: string) => {
+        try {
+            if(email){
+                await AsyncStorage.setItem(`${email} Signup`, value);
+                console.log('Email Signup Key stored : ', value)
+            }else{
+                await AsyncStorage.setItem(`${mobileNo} Signup`, value);
+                console.log('Mobile Signup Key stored : ', value)
+            }
+        } catch (e) {
+            console.log('Error storing data locally : ', e)
+        }
+      };
 
      function SignUp(){
          const regex = /.*\d.*/
@@ -72,7 +86,7 @@ export default function CreatePassword(){
                         `Code Delivery Destination: ${signUpNextStep.codeDeliveryDetails.destination}`,
                     );
                 }
-
+                await storeData(password)
                  // Go to confirm code screen
                  router.push({
                     pathname: '/(auth)/confirmCode',
@@ -92,8 +106,7 @@ export default function CreatePassword(){
               
         }
      }
-
-
+   
      const signUpEmail = async()=>{
         try{
             if(typeof email === 'string'){
@@ -119,7 +132,7 @@ export default function CreatePassword(){
                     console.log(
                         `Code Delivery Destination: ${signUpNextStep.codeDeliveryDetails.destination}`,
                     );
-        
+                    await storeData(password)
                     // Go to confirm code screen
                     router.push({
                         pathname: '/(auth)/confirmCode',

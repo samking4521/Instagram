@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from "react"
-import { SafeAreaView, View, Text, Pressable, Keyboard, ScrollView, Modal, StyleSheet} from "react-native"
+import { SafeAreaView, View, Text, Pressable, Keyboard, ScrollView, Modal, StyleSheet, ActivityIndicator} from "react-native"
 import { AntDesign } from '@expo/vector-icons'
 import { StatusBar } from "expo-status-bar"
 import { router } from "expo-router"
 import PhoneInput from "react-native-phone-number-input";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 // import LinearGradient from 'react-native-linear-gradient';
 
 export default function SignUp(){
@@ -12,10 +14,33 @@ export default function SignUp(){
     const [mobileNo, setMobileNo] = useState('')
     const [showErrorText, setShowErrorText] = useState<string | null>(null)
     const [value, setValue] = useState("");
+    const [mobileSignUpKeyValue, setMobileSignUpKeyValue] = useState<string | null>(null)
+    const [mobileConfirmKeyValue, setMobileConfirmKeyValue] = useState<string | null>(null)
+    const [loadingIndicator, setLoadingIndicator] = useState(false)
     const phoneInput = useRef<PhoneInput>(null);
   
-    console.log(mobileNo)
-    
+    const getMobileSignUpInStorage = async () => {
+        try {
+           const mobileKeyVal = await AsyncStorage.getItem(`${mobileNo} Signup`)
+           console.log('Mobile Signup key : ', mobileKeyVal)
+           return mobileKeyVal
+        } catch(e) {
+          // read error
+          console.log('Error reading data locally : ', e)
+        }
+      }
+
+      const getMobileConfirmStatusInStorage = async () => {
+        try {
+           const mobileConfirmKeyVal = await AsyncStorage.getItem(`${mobileNo} Confirmed`)
+           console.log('Mobile Confirm key value : ', mobileConfirmKeyVal)
+           
+        } catch(e) {
+          // read error
+          console.log('Error reading data locally : ', e)
+        }
+      }
+
     useEffect(() => {
         const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
           setKeyboardVisible(true);
@@ -33,15 +58,31 @@ export default function SignUp(){
 
       const goToPassword = async()=>{
           if(value.length >=6 && value.length<=15){
-            router.push({
-                pathname: '/(auth)/createPassword',
-                params: {mobileNo}
-            })
+            setLoadingIndicator(true)
+            await getMobileSignUpInStorage()
+            await getMobileConfirmStatusInStorage()
+
+            if(mobileSignUpKeyValue == 'true' && mobileConfirmKeyValue == 'false'){
+                    router.push({
+                        pathname: '/(auth)/confirmCode',
+                        params: {mobileNo, resendConfirmCode: 'true'}
+                    })
+                    setLoadingIndicator(false)
+            }else{
+                router.push({
+                    pathname: '/(auth)/createPassword',
+                    params: {mobileNo}
+                })
+                setLoadingIndicator(false)
+            }
+          
           }else if (value.length == 0) {
             setShowErrorText('zero')
+            setLoadingIndicator(false)
           }
           else{
             setShowErrorText('less than 6')
+            setLoadingIndicator(false)
           }
       }
   
@@ -96,7 +137,7 @@ export default function SignUp(){
 
             <View style={styles.pressableContainer}> 
                 <Pressable onPress={goToPassword} style={styles.nextBtn}>
-                    <Text style={styles.nextBtnText}>Next</Text>
+                   { loadingIndicator? <ActivityIndicator size='small' color='white'/> : <Text style={styles.nextBtnText}>Next</Text>}
                 </Pressable>
                 <Pressable onPress={()=> router.push('/(auth)/signUpEmail')} style={styles.emailBtn}>
                     <Text style={styles.signUpText}>Sign up with email</Text>

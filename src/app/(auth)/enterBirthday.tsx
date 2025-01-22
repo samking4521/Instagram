@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react"
 import { SafeAreaView, View, Text, Pressable, Keyboard, ScrollView, StyleSheet, Modal, ActivityIndicator} from "react-native"
 import { AntDesign } from '@expo/vector-icons'
-import { router } from "expo-router"
+import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import DatePicker from 'react-native-date-picker'
 import LinearGradient from 'react-native-linear-gradient';
 import type { Schema } from '../../../amplify/data/resource'
 import { generateClient } from 'aws-amplify/data'
 import { getCurrentUser } from "aws-amplify/auth"
+
 
 const client = generateClient<Schema>()
 
@@ -20,6 +21,8 @@ export default function EnterBirthday(){
     const [userAge, setUserAge] = useState(0)
     const [showDateError, setShowDateError] = useState(false)
     const [loadingIndicator, setLoadingIndicator] = useState(false)
+    const {name} = useLocalSearchParams()
+    
 
 
 
@@ -81,7 +84,11 @@ export default function EnterBirthday(){
                 dob: dateValue
                 })
                 console.log('User birthday added successfully : ', addDob )
-                router.push('/(auth)/profilePicture')
+                console.log('enterBirthday set as false to local storage')
+                router.push({
+                    pathname: '/(auth)/profilePicture',
+                    params: {name}
+                  })
                 setLoadingIndicator(false)
         }
         }catch(e){

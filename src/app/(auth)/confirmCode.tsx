@@ -7,6 +7,7 @@ import BottomSheet, {BottomSheetView} from '@gorhom/bottom-sheet';
 // import LinearGradient from 'react-native-linear-gradient';
 import type { Schema } from '../../../amplify/data/resource'
 import { generateClient } from 'aws-amplify/data'
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const client = generateClient<Schema>()
 
@@ -19,11 +20,37 @@ export default function ConfirmCode(){
     const [showLoadingIndicator, setShowLoadingIndicator] = useState(false)
     const [codeResent, setCodeResent] = useState(false)
     const labelRef = useRef<TextInput>(null)
-    const { mobileNo, email, password } = useLocalSearchParams()
+    const { mobileNo, email, password, resendConfirmCode } = useLocalSearchParams()
     const snapPoints = useMemo(()=> ['70%'], [])
     const bottomSheetRef = useRef<BottomSheet>(null)
 
-    
+    useEffect(()=>{
+        if(resendConfirmCode){
+            resendConfirmationCode()
+            setCodeResent(true)
+        }
+    }, [])
+
+    const storeData = async (value: string) => {
+        try {
+            if(email){
+                await AsyncStorage.setItem(`${email} Confirmed`, value);
+                console.log('Email Confirmed key stored : ', value)
+            }else{
+                await AsyncStorage.setItem(`${mobileNo} Confirmed`, value);
+                console.log('Mobile Confirmed key stored : ', value)
+            }
+         
+        } catch (e) {
+            console.log('Error storing data locally : ', e)
+        }
+      };
+
+      useEffect(()=>{
+        storeData('false')
+      }, [])
+
+
     useEffect(() => {
         const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
           setKeyboardVisible(true);
@@ -70,7 +97,8 @@ export default function ConfirmCode(){
                             sub: userId
                           })
                        console.log('User sub created successfully : ', createUserSub )
-                        router.push({
+                       await storeData('true')
+                       router.push({
                             pathname: '/(auth)/enterName',
                             params: {email}
                         })
@@ -86,6 +114,7 @@ export default function ConfirmCode(){
                       console.log('nextStep : ', nextStep)
                       if(nextStep.signInStep === 'DONE'){
                         console.log('Successfully signed in.');
+                        await storeData('true')
                         router.push('/(auth)/enterName')
                         setShowLoadingIndicator(false)
                       }

@@ -3,6 +3,7 @@ import { SafeAreaView, View, Text, TextInput, Pressable, Keyboard, ScrollView, M
 import { AntDesign, MaterialIcons } from '@expo/vector-icons'
 import { StatusBar } from "expo-status-bar"
 import { router } from "expo-router"
+import AsyncStorage from '@react-native-async-storage/async-storage';
 // import LinearGradient from 'react-native-linear-gradient';
 
 export default function SignUpEmail(){
@@ -12,7 +13,29 @@ export default function SignUpEmail(){
     const [showEmailError, setShowEmailError] = useState(false)
     const emailRef = useRef<TextInput>(null)
     const [email, setEmail] = useState('')
-     
+    const [loadingIndicator, setLoadingIndicator] = useState(false)
+
+    const getEmailSignUpInStorage = async () => {
+        try {
+           const emailKeyVal = await AsyncStorage.getItem(`${email} Signup`)
+           console.log('Email Signup key : ', emailKeyVal)
+           return emailKeyVal
+        } catch(e) {
+          // read error
+          console.log('Error reading data locally : ', e)
+        }
+      }
+
+      const getEmailConfirmStatusInStorage = async () => {
+        try {
+           const emailConfirmKeyVal = await AsyncStorage.getItem(`${email} Confirmed`)
+           console.log('Email Confirm key value : ', emailConfirmKeyVal)
+           return emailConfirmKeyVal
+        } catch(e) {
+          // read error
+          console.log('Error reading data locally : ', e)
+        }
+      }
 
     useEffect(() => {
         const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -30,14 +53,28 @@ export default function SignUpEmail(){
       }, []);
    
       const goToPassword = async ()=>{
+       
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-
+        
             if(email.length >= 1 && emailRegex.test(email)){
-               // navigate to password screen 
-                 router.push({
-                    pathname: '/(auth)/createPassword',
-                    params: {email}
-                })
+                setLoadingIndicator(true)
+                const emailSignUpKeyValue =  await getEmailSignUpInStorage()
+                const emailConfirmKeyValue = await getEmailConfirmStatusInStorage()
+                console.log('Checked local storage')
+                if(emailSignUpKeyValue && emailConfirmKeyValue === 'false'){
+                        router.push({
+                            pathname: '/(auth)/confirmCode',
+                            params: {email, password:emailSignUpKeyValue, resendConfirmCode: 'true'}
+                        })
+                        setLoadingIndicator(false)
+                }else{
+                    // navigate to password screen 
+                    router.push({
+                        pathname: '/(auth)/createPassword',
+                        params: {email}
+                    })
+                    setLoadingIndicator(false)
+                }
                
             }else{
                 Keyboard.dismiss()
@@ -52,7 +89,6 @@ export default function SignUpEmail(){
                 }
       }
 
-     
 
     return(
     //     <LinearGradient
@@ -83,7 +119,7 @@ export default function SignUpEmail(){
 
             <View style={styles.pressableBtnCont}> 
                 <Pressable onPress={goToPassword} style={styles.nextBtn}>
-                    <Text style={styles.nextBtnText}>Next</Text>
+                    {loadingIndicator? <ActivityIndicator size='small' color='white'/> : <Text style={styles.nextBtnText}>Next</Text>}
                 </Pressable>
                 <Pressable onPress={()=> router.push('/(auth)/signUp')} style={styles.mobileBtn}>
                     <Text style={styles.signUpText}>Sign up with mobile number</Text>

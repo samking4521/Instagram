@@ -104,7 +104,10 @@ export default function EnterUserName(){
         // update user obj with username
         const { data: updatedUserData } = await client.models.User.update(updatedUserDataObj);
         console.log('Username created : ', updatedUserData)
-        router.push('/(auth)/enterBirthday')
+        router.push({
+            pathname: '/(auth)/enterBirthday',
+            params: {name}
+          })
         setLoadingIndicator(false)
     }
         }catch(e){

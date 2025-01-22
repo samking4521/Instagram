@@ -15,8 +15,6 @@ export default function SignIn(){
     const pwdInputRef = useRef<TextInput>(null)
     const userInputRef = useRef<TextInput>(null)
   
-    console.log('I am in view')
-    
     const ShowUserInput = ()=>{
         setShowUserInput(true)
         setShowUserInput(true)

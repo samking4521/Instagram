@@ -8,7 +8,7 @@ import { signOut } from 'aws-amplify/auth'
 Amplify.configure(outputs);
 
 export default function RootNavigator(){
-     
+    
     return <GestureHandlerRootView style={{flex: 1}}>
                  <Slot/>
           </GestureHandlerRootView>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {View, Text, Pressable, Image, StyleSheet, ActivityIndicator} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AntDesign, Fontisto} from '@expo/vector-icons'
@@ -14,8 +14,6 @@ export default function ProfilePicture(){
     const snapPoints = useMemo(()=> ['80%'], [])
     const { name } = useLocalSearchParams()
     const [loadingIndicator, setLoadingIndicator] = useState(false)
-    
-
 
     const openCamera = async () => {
         // Request camera permissions
@@ -80,10 +78,14 @@ export default function ProfilePicture(){
       // Upload the image blob to the storage
           const result = await uploadData({
             // path:  `media/userProfilePicture/a856aacc-e3fd-4dd7-9db0-96dc9721f420`,
-            path: ({identityId}) => `media/userProfilePicture/${identityId}`,
+            path: ({identityId}) => `media/userProfilePicture/${identityId}/*`,
             data: theBlob,
           }).result;
           console.log('Succeeded: ', result);
+          router.push({
+            pathname: '/(auth)/welcomeScreen',
+            params: {name}
+          })
           setLoadingIndicator(false)
         } catch (error) {
           console.log('Error : ', error);
@@ -100,6 +102,18 @@ export default function ProfilePicture(){
          }
       }
 
+      const skipToWelcomeScreen = async ()=>{
+        if(image){
+          setOpenBottomSheet(true)
+        }else{
+          router.push({
+            pathname: '/(auth)/welcomeScreen',
+            params: {name}
+          })
+        }
+      }
+
+      
     return(
         <SafeAreaView style={{  flex: 1, 
                                 padding: 20, 
@@ -150,7 +164,7 @@ export default function ProfilePicture(){
                             }}>{image? 'Done' : 'Add Picture'}</Text>}
                             
                         </Pressable>
-                        <Pressable onPress={image? ()=> setOpenBottomSheet(true) : null} style={{
+                        <Pressable onPress={skipToWelcomeScreen} style={{
                             borderWidth: 1,
                             borderColor:'#4C4C4C', 
                             padding: 10, 

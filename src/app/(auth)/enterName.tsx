@@ -70,6 +70,7 @@ export default function EnterName(){
                    name: name
                 })
                 console.log('User name created successfully : ', createName )
+                console.log('enterName set as false to local storage')
                 router.push({
                     pathname: '/(auth)/createUsername',
                     params: { email, mobileNo }
