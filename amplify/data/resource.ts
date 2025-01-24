@@ -13,20 +13,12 @@ const schema = a.schema({
       username: a.string(),
       dob: a.string(),
       sub: a.string(),
-      imageKey: a.string()
+      completeSignUp: a.boolean(),
+      email: a.string(),
+      mobileNo: a.string(),
+      password: a.string()
     })
     .authorization((allow) => [allow.owner()]),
-   AuthFlow: a
-   .model({
-      signedUp: a.string(),
-      isConfirmed: a.boolean(),
-      completeName: a.boolean(),
-      completeUsername: a.boolean(),
-      completeDob: a.boolean(),
-      completeProfilePic: a.boolean(),
-      completeWelcomeScreen: a.boolean()
-   })
-   .authorization((allow) => [allow.owner()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;

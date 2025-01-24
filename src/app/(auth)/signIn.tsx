@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { View, Text, SafeAreaView, Image, TextInput, useWindowDimensions, Pressable, ScrollView, KeyboardAvoidingView, Platform, Keyboard, StyleSheet } from 'react-native'
 import { AntDesign, FontAwesome6, MaterialIcons } from '@expo/vector-icons'
 import { router } from 'expo-router'
+import { MMKV } from 'react-native-mmkv'
+
+export const storage = new MMKV()
 
 export default function SignIn(){
     const [showUserInput, setShowUserInput] = useState(false)

@@ -5,7 +5,7 @@ import { StatusBar } from "expo-status-bar"
 import { router } from "expo-router"
 import PhoneInput from "react-native-phone-number-input";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { storage } from "./signIn"
 // import LinearGradient from 'react-native-linear-gradient';
 
 export default function SignUp(){
@@ -14,33 +14,15 @@ export default function SignUp(){
     const [mobileNo, setMobileNo] = useState('')
     const [showErrorText, setShowErrorText] = useState<string | null>(null)
     const [value, setValue] = useState("");
-    const [mobileSignUpKeyValue, setMobileSignUpKeyValue] = useState<string | null>(null)
-    const [mobileConfirmKeyValue, setMobileConfirmKeyValue] = useState<string | null>(null)
     const [loadingIndicator, setLoadingIndicator] = useState(false)
     const phoneInput = useRef<PhoneInput>(null);
   
-    const getMobileSignUpInStorage = async () => {
-        try {
-           const mobileKeyVal = await AsyncStorage.getItem(`${mobileNo} Signup`)
-           console.log('Mobile Signup key : ', mobileKeyVal)
-           return mobileKeyVal
-        } catch(e) {
-          // read error
-          console.log('Error reading data locally : ', e)
+    const getStorageValues = ()=>{
+            const signedUpStatus = storage.getString(mobileNo)
+            const confirmStatus = storage.getBoolean(`${mobileNo} confirmed`)
+            return {signedUpStatus, confirmStatus}
         }
-      }
-
-      const getMobileConfirmStatusInStorage = async () => {
-        try {
-           const mobileConfirmKeyVal = await AsyncStorage.getItem(`${mobileNo} Confirmed`)
-           console.log('Mobile Confirm key value : ', mobileConfirmKeyVal)
-           
-        } catch(e) {
-          // read error
-          console.log('Error reading data locally : ', e)
-        }
-      }
-
+   
     useEffect(() => {
         const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
           setKeyboardVisible(true);
@@ -59,23 +41,31 @@ export default function SignUp(){
       const goToPassword = async()=>{
           if(value.length >=6 && value.length<=15){
             setLoadingIndicator(true)
-            await getMobileSignUpInStorage()
-            await getMobileConfirmStatusInStorage()
 
-            if(mobileSignUpKeyValue == 'true' && mobileConfirmKeyValue == 'false'){
-                    router.push({
-                        pathname: '/(auth)/confirmCode',
-                        params: {mobileNo, resendConfirmCode: 'true'}
-                    })
-                    setLoadingIndicator(false)
+            const { signedUpStatus, confirmStatus} = await getStorageValues()
+
+            if(signedUpStatus && !confirmStatus){
+                // navigate to confirmCode screen 
+                router.push({
+                    pathname: '/(auth)/confirmCode',
+                    params: { mobileNo, password: signedUpStatus, resendConfirmCode: 'true'}
+                })
+                setLoadingIndicator(false)
+            }else if(signedUpStatus && confirmStatus){
+                // navigate to enterName screen 
+                router.push({
+                    pathname: '/(auth)/enterName',
+                    params: { mobileNo }
+                })
+                setLoadingIndicator(false)
             }else{
+                // navigate to password screen 
                 router.push({
                     pathname: '/(auth)/createPassword',
                     params: {mobileNo}
                 })
                 setLoadingIndicator(false)
             }
-          
           }else if (value.length == 0) {
             setShowErrorText('zero')
             setLoadingIndicator(false)
@@ -154,11 +144,16 @@ export default function SignUp(){
                         <View style={styles.alertBox}>
                             <Text style={styles.haveAnAccText}>Already have an account?</Text>
                             <View style={styles.actionBtnCont}>
-                                <Text style={styles.logInText}>LOG IN</Text>
-                                <Text style={styles.continueToAccText}>CONTINUE CREATING ACCOUNT</Text>
+                                <Text onPress={()=> router.push('/(auth)/signIn')} style={styles.logInText}>LOG IN</Text>
+                                <Text onPress={()=> setShowModal(false)} style={styles.continueToAccText}>CONTINUE CREATING ACCOUNT</Text>
                             </View>
                         </View>
                 </Pressable>
+            </Modal>
+            <Modal visible={loadingIndicator} onRequestClose={()=>{}} presentationStyle='overFullScreen' transparent={true}>
+                 <View style={{flex: 1}}>
+
+                 </View>
             </Modal>
         </SafeAreaView>
     // </LinearGradient>

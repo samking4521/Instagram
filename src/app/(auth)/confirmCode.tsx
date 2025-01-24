@@ -1,15 +1,15 @@
 import { useState, useEffect, useRef, useMemo } from "react"
-import { SafeAreaView, View, Text, TextInput, Pressable, Keyboard, ScrollView, StyleSheet, ActivityIndicator} from "react-native"
+import { SafeAreaView, View, Text, TextInput, Pressable, Keyboard, ScrollView, StyleSheet, ActivityIndicator, Modal} from "react-native"
 import { AntDesign, MaterialIcons } from '@expo/vector-icons'
-import { confirmSignUp, resendSignUpCode, signIn, getCurrentUser} from "aws-amplify/auth";
+import { confirmSignUp, resendSignUpCode, signIn, getCurrentUser, signOut} from "aws-amplify/auth";
 import { router, useLocalSearchParams } from "expo-router"
 import BottomSheet, {BottomSheetView} from '@gorhom/bottom-sheet';
-// import LinearGradient from 'react-native-linear-gradient';
 import type { Schema } from '../../../amplify/data/resource'
 import { generateClient } from 'aws-amplify/data'
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from "./signIn";
 
 const client = generateClient<Schema>()
+// import LinearGradient from 'react-native-linear-gradient';
 
 export default function ConfirmCode(){
     const [showConfirmCodeText, setShowConfirmCodeText] = useState(false)
@@ -31,24 +31,23 @@ export default function ConfirmCode(){
         }
     }, [])
 
-    const storeData = async (value: string) => {
-        try {
-            if(email){
-                await AsyncStorage.setItem(`${email} Confirmed`, value);
-                console.log('Email Confirmed key stored : ', value)
-            }else{
-                await AsyncStorage.setItem(`${mobileNo} Confirmed`, value);
-                console.log('Mobile Confirmed key stored : ', value)
+         const storeDataLocally = (val: boolean)=>{
+                if(email){
+                    if(typeof email == 'string' ){
+                        storage.set(`${email} confirmed`, val)
+                    }
+                }else{
+                    if(typeof mobileNo == 'string' ){
+                        storage.set(`${mobileNo} confirmed`, val)
+                    }
+                }
+               
             }
-         
-        } catch (e) {
-            console.log('Error storing data locally : ', e)
-        }
-      };
 
-      useEffect(()=>{
-        storeData('false')
-      }, [])
+    useEffect(()=>{
+        storeDataLocally(false)
+        console.log(`${email || mobileNo} confirmed false`)
+    }, [])
 
 
     useEffect(() => {
@@ -83,44 +82,104 @@ export default function ConfirmCode(){
         try{
             if(email){
                 if(typeof email === 'string' && typeof password === 'string'){
-                    const { nextStep } = await signIn({
-                        username: email,
-                        password: password,
-                      });
-                      console.log('nextStep : ', nextStep)
-                      if(nextStep.signInStep === 'DONE'){
-                        console.log('Successfully signed in.');
-                        // get currently authenticated user
+                    //   // get currently authenticated user
+                    //   const { userId: userSub } = await getCurrentUser();
+                    //   if(userSub){
+                    //       await signOut()
+                    //       console.log('User signed out successfully')
+                    //       const { nextStep } = await signIn({
+                    //         username: email,
+                    //         password: password,
+                    //       });
+                    //       console.log('nextStep : ', nextStep)
+                    //       if(nextStep.signInStep === 'DONE'){
+                    //         console.log('Successfully signed in.');
+                    //       }
+                    //     const { userId } = await getCurrentUser();
+                    //          // Create User model and add sub id
+                    //     const createUserSub = await client.models.User.create({
+                    //         sub: userId,
+                    //         password: password,
+                    //         email: email
+                    //       })
+                    //    console.log('User sub created successfully : ', createUserSub )
+                              
+                    //   }else{
+                        const { nextStep } = await signIn({
+                            username: email,
+                            password: password,
+                          });
+                          console.log('nextStep : ', nextStep)
+                          if(nextStep.signInStep === 'DONE'){
+                            console.log('Successfully signed in.');
+                          }
                         const { userId } = await getCurrentUser();
-                        // Create User model and add sub id
+                             // Create User model and add sub id
                         const createUserSub = await client.models.User.create({
-                            sub: userId
+                            sub: userId,
+                            password: password,
+                            email: email
                           })
                        console.log('User sub created successfully : ', createUserSub )
-                       await storeData('true')
+                      }
+                    
+                       await storeDataLocally(true)
+                       console.log(`${email} confirmed true`)
                        router.push({
                             pathname: '/(auth)/enterName',
                             params: {email}
                         })
                         setShowLoadingIndicator(false)
-                      }
-                }
             }else{
                 if(typeof mobileNo === 'string' && typeof password === 'string'){
-                    const { nextStep } = await signIn({
-                        username: mobileNo,
-                        password: password,
-                      });
-                      console.log('nextStep : ', nextStep)
-                      if(nextStep.signInStep === 'DONE'){
-                        console.log('Successfully signed in.');
-                        await storeData('true')
-                        router.push('/(auth)/enterName')
+                        // // get currently authenticated user
+                        // const { userId: userSub } = await getCurrentUser();
+                        // if(userSub){
+                        //     await signOut()
+                        //     console.log('User signed out successfully')
+                        //     const { nextStep } = await signIn({
+                        //     username: mobileNo,
+                        //     password: password,
+                        //     });
+                        //     console.log('nextStep : ', nextStep)
+                        //     if(nextStep.signInStep === 'DONE'){
+                        //     console.log('Successfully signed in.');
+                        //     }
+                        // const { userId } = await getCurrentUser();
+                        //         // Create User model and add sub id
+                        // const createUserSub = await client.models.User.create({
+                        //     sub: userId,
+                        //     password: password,
+                        //     mobileNo: mobileNo
+                        //     })
+                        // console.log('User sub created successfully : ', createUserSub )
+                                
+                        // }else{
+                        const { nextStep } = await signIn({
+                            username: mobileNo,
+                            password: password,
+                            });
+                            console.log('nextStep : ', nextStep)
+                            if(nextStep.signInStep === 'DONE'){
+                            console.log('Successfully signed in.');
+                            }
+                        const { userId } = await getCurrentUser();
+                                // Create User model and add sub id
+                        const createUserSub = await client.models.User.create({
+                            sub: userId,
+                            password: password,
+                            mobileNo: mobileNo
+                            })
+                        console.log('User sub created successfully : ', createUserSub )
+                        }
+                        await storeDataLocally(true)
+                        console.log(`${mobileNo} confirmed true`)
+                        router.push({
+                            pathname: '/(auth)/enterName',
+                            params: {mobileNo}
+                        })
                         setShowLoadingIndicator(false)
-                      }
-                }
             }
-          
         }catch(e){
             if(e instanceof Error){
                 console.log('Error signing user in ', e.message)
@@ -164,9 +223,14 @@ export default function ConfirmCode(){
             
          }catch(e){
             if(e instanceof Error){
-                console.log('Error confirming code', e.message)
+                console.log('Error confirming code', e.name)
                 setShowLoadingIndicator(false)
-                setShowConfirmCodeErrorText('Invalid code')
+                if(e.name == 'CodeMismatchException'){
+                    setShowConfirmCodeErrorText('Invalid code')
+                }else{
+                    setShowConfirmCodeErrorText('network error')
+                }
+                
             }
          }
          
@@ -253,7 +317,7 @@ export default function ConfirmCode(){
                   { showConfirmCodeErrorText && <AntDesign name="exclamationcircleo" size={24} color="red" /> }
 
                  </Pressable>
-                   { showConfirmCodeErrorText && <Text style={{color:"red", letterSpacing: 0.5}}>{showConfirmCodeErrorText == 'zero'? `Code is required. Check your ${email? 'email': 'text message'} to find the code` : showConfirmCodeErrorText == 'less than 6'? 'Confirmation code must be at least 6 characters long' : showConfirmCodeErrorText == 'network'? 'Something went wrong! Check your internet connection or try again later' : 'The confirmation code you entered is incorrect. Please try again.' }</Text>}
+                   { showConfirmCodeErrorText && <Text style={{color:"red", letterSpacing: 0.5}}>{showConfirmCodeErrorText == 'zero'? `Code is required. Check your ${email? 'email': 'text message'} to find the code` : showConfirmCodeErrorText == 'less than 6'? 'Confirmation code must be at least 6 characters long' : showConfirmCodeErrorText == 'network'? 'Something went wrong! Check your internet connection or try again later' : showConfirmCodeErrorText == 'Invalid code'? 'The confirmation code you entered is incorrect. Please try again.' : 'Something went wrong! Please check your internet connection and try again later.' }</Text>}
                 </View>
 
             <View style={styles.pressableBtnCont}> 
@@ -281,6 +345,11 @@ export default function ConfirmCode(){
                      </View>
                 </BottomSheetView>
           </BottomSheet>}
+           <Modal visible={showLoadingIndicator} onRequestClose={()=>{}} presentationStyle='overFullScreen' transparent={true}>
+                           <View style={{flex: 1}}>
+
+                           </View>
+            </Modal>
         </SafeAreaView>
     )
 }

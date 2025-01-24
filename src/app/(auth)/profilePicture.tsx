@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import {View, Text, Pressable, Image, StyleSheet, ActivityIndicator} from 'react-native'
+import {View, Text, Pressable, Image, StyleSheet, ActivityIndicator, Modal, Alert} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AntDesign, Fontisto} from '@expo/vector-icons'
 import BottomSheet, {BottomSheetView} from '@gorhom/bottom-sheet'
@@ -7,13 +7,35 @@ import * as ImgPicker from 'expo-image-picker';
 import ImagePicker from 'react-native-image-crop-picker';
 import { router, useLocalSearchParams } from 'expo-router'
 import { uploadData } from 'aws-amplify/storage';
+import type { Schema } from '../../../amplify/data/resource'
+import { generateClient } from 'aws-amplify/data'
+
+const client = generateClient<Schema>()
+
 
 export default function ProfilePicture(){
     const [openBottomSheet, setOpenBottomSheet] = useState(false)
     const [image, setImage] = useState<string | null>(null);
     const snapPoints = useMemo(()=> ['80%'], [])
-    const { name } = useLocalSearchParams()
+    const { name, email, mobileNo } = useLocalSearchParams()
     const [loadingIndicator, setLoadingIndicator] = useState(false)
+
+
+    const showAlert = () => {
+      Alert.alert(
+        'Network Error', // Title of the alert
+        'Image upload failed due to a network error. Please check your connection and try again.', // Message in the alert
+        [
+          {
+            text: 'Cancel',
+            onPress: () => console.log('Cancel Pressed'),
+            style: 'cancel',
+          },
+          { text: 'OK', onPress: () => console.log('OK Pressed') },
+        ],
+        { cancelable: true } // Allows dismissal by tapping outside the alert
+      );
+    };
 
     const openCamera = async () => {
         // Request camera permissions
@@ -84,12 +106,13 @@ export default function ProfilePicture(){
           console.log('Succeeded: ', result);
           router.push({
             pathname: '/(auth)/welcomeScreen',
-            params: {name}
+            params: {name, email, mobileNo}
           })
           setLoadingIndicator(false)
         } catch (error) {
           console.log('Error : ', error);
           setLoadingIndicator(false)
+          showAlert()
         }
       }
 
@@ -108,12 +131,11 @@ export default function ProfilePicture(){
         }else{
           router.push({
             pathname: '/(auth)/welcomeScreen',
-            params: {name}
+            params: {name, email, mobileNo}
           })
         }
       }
 
-      
     return(
         <SafeAreaView style={{  flex: 1, 
                                 padding: 20, 
@@ -195,6 +217,11 @@ export default function ProfilePicture(){
                      </View>
                 </BottomSheetView>
           </BottomSheet>}
+          <Modal visible={loadingIndicator} onRequestClose={()=>{}} presentationStyle='overFullScreen' transparent={true}>
+                           <View style={{flex: 1}}>
+          
+                           </View>
+            </Modal>
         </SafeAreaView>
     )
 }

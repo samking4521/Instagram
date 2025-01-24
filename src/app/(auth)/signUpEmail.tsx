@@ -3,8 +3,10 @@ import { SafeAreaView, View, Text, TextInput, Pressable, Keyboard, ScrollView, M
 import { AntDesign, MaterialIcons } from '@expo/vector-icons'
 import { StatusBar } from "expo-status-bar"
 import { router } from "expo-router"
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from "./signIn"
 // import LinearGradient from 'react-native-linear-gradient';
+
+
 
 export default function SignUpEmail(){
     const [showEmailText, setShowEmailText] = useState(false)
@@ -15,27 +17,11 @@ export default function SignUpEmail(){
     const [email, setEmail] = useState('')
     const [loadingIndicator, setLoadingIndicator] = useState(false)
 
-    const getEmailSignUpInStorage = async () => {
-        try {
-           const emailKeyVal = await AsyncStorage.getItem(`${email} Signup`)
-           console.log('Email Signup key : ', emailKeyVal)
-           return emailKeyVal
-        } catch(e) {
-          // read error
-          console.log('Error reading data locally : ', e)
-        }
-      }
-
-      const getEmailConfirmStatusInStorage = async () => {
-        try {
-           const emailConfirmKeyVal = await AsyncStorage.getItem(`${email} Confirmed`)
-           console.log('Email Confirm key value : ', emailConfirmKeyVal)
-           return emailConfirmKeyVal
-        } catch(e) {
-          // read error
-          console.log('Error reading data locally : ', e)
-        }
-      }
+    const getStorageValues = ()=>{
+        const signedUpStatus = storage.getString(email)
+        const confirmStatus = storage.getBoolean(`${email} confirmed`)
+        return {signedUpStatus, confirmStatus}
+    }
 
     useEffect(() => {
         const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -58,15 +44,22 @@ export default function SignUpEmail(){
         
             if(email.length >= 1 && emailRegex.test(email)){
                 setLoadingIndicator(true)
-                const emailSignUpKeyValue =  await getEmailSignUpInStorage()
-                const emailConfirmKeyValue = await getEmailConfirmStatusInStorage()
-                console.log('Checked local storage')
-                if(emailSignUpKeyValue && emailConfirmKeyValue === 'false'){
-                        router.push({
-                            pathname: '/(auth)/confirmCode',
-                            params: {email, password:emailSignUpKeyValue, resendConfirmCode: 'true'}
-                        })
-                        setLoadingIndicator(false)
+                const { signedUpStatus, confirmStatus} = await getStorageValues()
+                console.log('Received Storage Values : ', signedUpStatus, confirmStatus)
+                if(signedUpStatus && !confirmStatus){
+                    // navigate to confirmCode screen 
+                    router.push({
+                        pathname: '/(auth)/confirmCode',
+                        params: { email, password: signedUpStatus, resendConfirmCode: 'true'}
+                    })
+                    setLoadingIndicator(false)
+                }else if(signedUpStatus && confirmStatus){
+                    // navigate to enterName screen 
+                    router.push({
+                        pathname: '/(auth)/enterName',
+                        params: { email }
+                    })
+                    setLoadingIndicator(false)
                 }else{
                     // navigate to password screen 
                     router.push({
@@ -75,7 +68,6 @@ export default function SignUpEmail(){
                     })
                     setLoadingIndicator(false)
                 }
-               
             }else{
                 Keyboard.dismiss()
                 setShowEmailError(true)
@@ -136,11 +128,16 @@ export default function SignUpEmail(){
                         <View style={styles.alertBox}>
                             <Text style={styles.haveAnAccText}>Already have an account?</Text>
                             <View style={styles.actionBtnCont}>
-                                <Text style={styles.logInText}>LOG IN</Text>
-                                <Text style={styles.continueToAccText}>CONTINUE CREATING ACCOUNT</Text>
+                                <Text onPress={()=> router.push('/(auth)/signIn')} style={styles.logInText}>LOG IN</Text>
+                                <Text onPress={()=> setShowModal(false)} style={styles.continueToAccText}>CONTINUE CREATING ACCOUNT</Text>
                             </View>
                         </View>
                 </Pressable>
+            </Modal>
+            <Modal visible={loadingIndicator} onRequestClose={()=>{}} presentationStyle='overFullScreen' transparent={true}>
+                 <View style={{flex: 1}}>
+
+                 </View>
             </Modal>
         </SafeAreaView>
     // </LinearGradient>

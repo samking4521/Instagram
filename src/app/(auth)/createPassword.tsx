@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from "react"
 import { SafeAreaView, View, Text, TextInput, Pressable, Keyboard, ScrollView, StyleSheet, ActivityIndicator, Modal} from "react-native"
-import { signUp, resendSignUpCode, signIn } from 'aws-amplify/auth';
+import { signUp } from 'aws-amplify/auth';
 import { AntDesign, Feather } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { storage } from "./signIn";
 // import LinearGradient from 'react-native-linear-gradient';
 
 export default function CreatePassword(){
@@ -18,20 +17,19 @@ export default function CreatePassword(){
     const TxtInputContRef = useRef(null)
     const { email, mobileNo } = useLocalSearchParams()
 
-    const storeData = async (value: string) => {
-        try {
-            if(email){
-                await AsyncStorage.setItem(`${email} Signup`, value);
-                console.log('Email Signup Key stored : ', value)
-            }else{
-                await AsyncStorage.setItem(`${mobileNo} Signup`, value);
-                console.log('Mobile Signup Key stored : ', value)
+    const storeDataLocally = (val: string)=>{
+        if(email){
+            if(typeof email == 'string' ){
+                storage.set(email, val)
             }
-        } catch (e) {
-            console.log('Error storing data locally : ', e)
+        }else{
+            if(typeof mobileNo == 'string' ){
+                storage.set(mobileNo, val)
+            }
         }
-      };
-
+       
+    }
+    
      function SignUp(){
          const regex = /.*\d.*/
          if(password.length >= 6 && regex.test(password) ){
@@ -86,7 +84,8 @@ export default function CreatePassword(){
                         `Code Delivery Destination: ${signUpNextStep.codeDeliveryDetails.destination}`,
                     );
                 }
-                await storeData(password)
+                await storeDataLocally(password)
+                console.log('User sign up key stored locally')
                  // Go to confirm code screen
                  router.push({
                     pathname: '/(auth)/confirmCode',
@@ -98,10 +97,12 @@ export default function CreatePassword(){
         }catch(e){
                if(e instanceof Error){
                    console.log('Error signing up mobile : ', e.message)
-                   setShowLoadingIndicator(false)
                    if(e.message == 'User already exists'){
                     setShowPwdErr('user exists')
-                }
+                    }else{
+                        setShowPwdErr('Network error')
+                    }
+                    setShowLoadingIndicator(false)
                }
               
         }
@@ -132,7 +133,8 @@ export default function CreatePassword(){
                     console.log(
                         `Code Delivery Destination: ${signUpNextStep.codeDeliveryDetails.destination}`,
                     );
-                    await storeData(password)
+                    await storeDataLocally(password)
+                    console.log('User sign up key stored locally')
                     // Go to confirm code screen
                     router.push({
                         pathname: '/(auth)/confirmCode',
@@ -144,11 +146,13 @@ export default function CreatePassword(){
             } 
         }catch(e){
             if(e instanceof Error){
-                console.log('Error signing up email: ', e.message)
-                setShowLoadingIndicator(false)
-                if(e.message == 'User already exists'){
+                console.log('Error signing up email: ', e)
+                if(e.name === 'UsernameExistsException'){
                     setShowPwdErr('user exists')
+                }else{
+                    setShowPwdErr('Network error')
                 }
+                setShowLoadingIndicator(false)
             }
         }
         
@@ -201,7 +205,7 @@ export default function CreatePassword(){
                 </View>
                         { showPwdErr?  <AntDesign name="exclamationcircleo" size={24} color="red" /> :  <Feather onPress={()=> setShowPwd(!showPwd)} name={showPwd? "eye" : "eye-off"} size={28} color="#4C4C4C" />}                
                  </Pressable>
-                 {showPwdErr && <Text style={{color:"red", letterSpacing: 0.5}}>{showPwdErr == 'zero'? 'Password cannot be empty' : showPwdErr == 'less than 6'? 'This password is too short. Create a longer password with at least 6 letters and numbers' : showPwdErr == 'invalid password'? 'Password must contain letters and at least one number' : 'User already exists'}</Text>}
+                 {showPwdErr && <Text style={{color:"red", letterSpacing: 0.5}}>{showPwdErr == 'zero'? 'Password cannot be empty' : showPwdErr == 'less than 6'? 'This password is too short. Create a longer password with at least 6 letters and numbers' : showPwdErr == 'invalid password'? 'Password must contain letters and at least one number' : showPwdErr == 'user exists'? 'User already exists' : 'Something went wrong! check your internet connection or try again later'}</Text>}
 
             </View>
 
@@ -221,11 +225,16 @@ export default function CreatePassword(){
                         <View style={styles.alertBox}>
                             <Text style={styles.haveAnAccText}>Already have an account?</Text>
                             <View style={styles.actionBtnCont}>
-                                <Text style={styles.logInText}>LOG IN</Text>
-                                <Text style={styles.continueToAccText}>CONTINUE CREATING ACCOUNT</Text>
+                                <Text onPress={()=> router.push('/(auth)/signIn')} style={styles.logInText}>LOG IN</Text>
+                                <Text onPress={()=> setShowModal(false)} style={styles.continueToAccText}>CONTINUE CREATING ACCOUNT</Text>
                             </View>
                         </View>
                 </Pressable>
+            </Modal>
+            <Modal visible={showLoadingIndicator} onRequestClose={()=>{}} presentationStyle='overFullScreen' transparent={true}>
+                 <View style={{flex: 1}}>
+
+                 </View>
             </Modal>
         </SafeAreaView>
 

@@ -1,30 +1,52 @@
 import { useFonts } from 'expo-font';
-import { View, Text, Pressable, SafeAreaView, Image} from 'react-native'
+import { View, Text, Pressable, SafeAreaView, Image, ActivityIndicator, Modal} from 'react-native'
 import { Feather, AntDesign } from '@expo/vector-icons'
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { getUrl } from 'aws-amplify/storage';
-import { useState , useEffect, useLayoutEffect} from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useState, useLayoutEffect} from 'react';
+import { getCurrentUser } from 'aws-amplify/auth'
+import type { Schema } from '../../../amplify/data/resource'
+import { generateClient } from 'aws-amplify/data'
+import { storage } from './signIn';
 
+const client = generateClient<Schema>()
 
 export default function WelcomeScreen(){
-    const { name } = useLocalSearchParams()
+    const { name, email, mobileNo } = useLocalSearchParams()
     const [image, setImage] = useState<string | null>(null)
-
-
-    const storeData = async (value: string) => {
-        try {
-          await AsyncStorage.setItem('welcomeScreen', value);
-          console.log('welcomeScreen set as true to local storage')
-        } catch (e) {
-            console.log('Error storing data locally : ', e)
+    const [loadingIndicator, setLoadingIndicator] = useState(false)
+    const [errorText, showErrorText] = useState(false)
+    
+    const setCompleteSignUp = async()=>{
+        try{
+            // get user in Database
+              const { userId } = await getCurrentUser();
+              console.log('userId : ', userId)
+              // if userId returns true
+              if(userId){
+                  const { data: user } = await client.models.User.list({
+                    filter: {
+                      sub: {
+                          'eq': userId
+                      }
+                    }
+                  });
+                  console.log('User : ', user)
+            
+                  const updatedUserDataObj = {
+                      id: user[0].id,
+                      completeSignUp: true
+                    };
+                    // update user obj with username
+                    const { data: updatedUserData } = await client.models.User.update(updatedUserDataObj);
+                    console.log('Updated User Data : ', updatedUserData)
+              }
+        }catch(e){
+            console.log('Error updating user complete sign up key : ', e)
+            showErrorText(true)
+            setLoadingIndicator(false)
         }
-      };
-  
-      useEffect(()=>{
-        storeData('true')
-      }, [])
-
+    }
 
      useFonts({
         'Pacifico-Regular': require('../../../assets/fonts/Pacifico-Regular.ttf'),
@@ -41,6 +63,31 @@ export default function WelcomeScreen(){
           setImage(linkToStorageFile.url.href)
      }
 
+     const clearLocalStorage = async()=>{
+            // delete a specific key + value
+            if(email){
+                if(typeof email !== 'string'){
+                    return
+                }
+                storage.delete(email)
+                storage.delete(`${email} confirmed`)
+            }else{
+                if(typeof mobileNo !== 'string'){
+                    return
+                }
+                storage.delete(mobileNo)
+                storage.delete(`${mobileNo} confirmed`)
+            }
+     }
+
+     const enterAppHomeScreen = async()=>{
+             setLoadingIndicator(true)
+             await setCompleteSignUp()
+             await clearLocalStorage()
+             console.log('Local data cleared successfully')
+             router.push('/(home)/homeScreen')
+     }
+
     return(
         <SafeAreaView style={{flex: 1, backgroundColor:'white'}}>
             <View style={{flex: 1, paddingVertical: 10, paddingHorizontal: 20}}>
@@ -55,12 +102,19 @@ export default function WelcomeScreen(){
                         </View>}
                         <Text style={{fontSize: 25, textAlign:'center', fontWeight:'500', marginTop: 15}}>Welcome to Instagram, {name}</Text>
                         <Text style={{marginVertical: 20, fontSize: 15, fontWeight: '500', color:'#4C4C4C', textAlign: 'center'}}>When you follow people you will see the photos and videos they post</Text>
-                        <Pressable style={{ width: '90%', backgroundColor:'blue', padding: 10, borderRadius: 25}}>
-                             <Text style={{color:'white', fontWeight:'600', textAlign:'center', fontSize: 16}}>Continue to Home</Text>
+                        <Pressable onPress={enterAppHomeScreen} style={{ width: '90%', backgroundColor:'blue', padding: 10, borderRadius: 25}}>
+                             {loadingIndicator? <ActivityIndicator size={'small'} color='white'/> : <Text style={{color:'white', fontWeight:'600', textAlign:'center', fontSize: 16}}>Continue to Home</Text>}
                         </Pressable>
-                    </View>
+                        { errorText && <Text style={{color:'red', letterSpacing: 0.3}}>Something went wrong! Please check your internet connection or try again later</Text>}                    
+                   </View>
                     
             </View>
+            <Modal visible={loadingIndicator} onRequestClose={()=>{}} presentationStyle='overFullScreen' transparent={true}>
+                                       <View style={{flex: 1}}>
+                      
+                                       </View>
+                        </Modal>
+            
         </SafeAreaView>
     )
 }

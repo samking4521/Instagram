@@ -17,7 +17,7 @@ export default function EnterName(){
     const [showNameError, setShowNameError] = useState<string | boolean>(false)
     const [showLoadingIndicator, setShowLoadingIndicator] = useState(false)
     const { email, mobileNo } = useLocalSearchParams()
-    
+     
 
     useEffect(() => {
         const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -70,7 +70,6 @@ export default function EnterName(){
                    name: name
                 })
                 console.log('User name created successfully : ', createName )
-                console.log('enterName set as false to local storage')
                 router.push({
                     pathname: '/(auth)/createUsername',
                     params: { email, mobileNo }
@@ -82,8 +81,8 @@ export default function EnterName(){
             if(e instanceof Error){
                 console.log('Error creating name in db : ', e.message)
             }
-            setShowLoadingIndicator(false)
             setShowNameError('network')
+            setShowLoadingIndicator(false)
         }
       }
 
@@ -128,11 +127,16 @@ export default function EnterName(){
                         <View style={styles.alertBox}>
                             <Text style={styles.haveAnAccText}>Already have an account?</Text>
                             <View style={styles.actionBtnCont}>
-                                <Text style={styles.logInText}>LOG IN</Text>
-                                <Text style={styles.continueToAccText}>CONTINUE CREATING ACCOUNT</Text>
+                                <Text onPress={()=> router.push('/(auth)/signIn')} style={styles.logInText}>LOG IN</Text>
+                                <Text onPress={()=> setShowModal(false)} style={styles.continueToAccText}>CONTINUE CREATING ACCOUNT</Text>
                             </View>
                         </View>
                 </Pressable>
+            </Modal>
+            <Modal visible={showLoadingIndicator} onRequestClose={()=>{}} presentationStyle='overFullScreen' transparent={true}>
+                 <View style={{flex: 1}}>
+
+                 </View>
             </Modal>
         </SafeAreaView>
     // </LinearGradient>

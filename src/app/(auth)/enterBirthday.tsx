@@ -19,12 +19,9 @@ export default function EnterBirthday(){
     const [showModal, setShowModal] = useState(false)
     const [dateValue, setDateValue] = useState('')
     const [userAge, setUserAge] = useState(0)
-    const [showDateError, setShowDateError] = useState(false)
+    const [showDateError, setShowDateError] = useState<string | boolean>(false)
     const [loadingIndicator, setLoadingIndicator] = useState(false)
-    const {name} = useLocalSearchParams()
-    
-
-
+    const {name, email, mobileNo} = useLocalSearchParams()
 
     const getUserAge = ()=>{
         const currentDate = new Date().getFullYear();
@@ -84,20 +81,19 @@ export default function EnterBirthday(){
                 dob: dateValue
                 })
                 console.log('User birthday added successfully : ', addDob )
-                console.log('enterBirthday set as false to local storage')
                 router.push({
                     pathname: '/(auth)/profilePicture',
-                    params: {name}
+                    params: {name, email, mobileNo}
                   })
                 setLoadingIndicator(false)
-        }
+           }
         }catch(e){
             if(e instanceof Error){
                 console.log('Error adding user birthday : ', e.message)
             }
+            setShowDateError('network')
             setLoadingIndicator(false)
         }
-          
     }
 
      useEffect(()=>{
@@ -145,7 +141,7 @@ export default function EnterBirthday(){
                            <Text style={{...styles.label, color: showDateError? 'red':'#4C4C4C'}}>Birthday ({userAge+' years old'})</Text>
                            <Text style={styles.placeholder}>{dateValue}</Text>
                  </Pressable>
-                { showDateError && <Text style={styles.errorText}>You must be at least 13 years old</Text>}
+                { showDateError && <Text style={styles.errorText}>{ showDateError == 'network'? 'Something went wrong! Please check your internet connection and try again.' : 'You must be at least 13 years old.'}</Text>}
             </View>
 
             <View style={styles.pressableBtnCont}> 
@@ -181,11 +177,16 @@ export default function EnterBirthday(){
                         <View style={styles.alertBox}>
                             <Text style={styles.haveAnAccText}>Already have an account?</Text>
                             <View style={styles.actionBtnCont}>
-                                <Text style={styles.logInText}>LOG IN</Text>
-                                <Text style={styles.continueToAccText}>CONTINUE CREATING ACCOUNT</Text>
+                                <Text onPress={()=> router.push('/(auth)/signIn')} style={styles.logInText}>LOG IN</Text>
+                                <Text onPress={()=> setShowModal(false)} style={styles.continueToAccText}>CONTINUE CREATING ACCOUNT</Text>
                             </View>
                         </View>
                 </Pressable>
+            </Modal>
+            <Modal visible={loadingIndicator} onRequestClose={()=>{}} presentationStyle='overFullScreen' transparent={true}>
+                 <View style={{flex: 1}}>
+
+                 </View>
             </Modal>
         </SafeAreaView>
         // </LinearGradient>

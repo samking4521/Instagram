@@ -13,7 +13,7 @@ const client = generateClient<Schema>()
 
 
 export default function EnterUserName(){
-    const { email } = useLocalSearchParams()
+    const { email, mobileNo } = useLocalSearchParams()
     const getIndex = email?.indexOf('@')
     const formatEmail: any = email?.slice(0, getIndex)
     const [name, setName] = useState(formatEmail? formatEmail : '')
@@ -23,6 +23,7 @@ export default function EnterUserName(){
     const [isUsernameAvailable, setIsUsernameAvailable] = useState<string | boolean>(false)
     const [showNameError, setShowNameError] = useState<string | boolean>(false)
     const [loadingIndicator, setLoadingIndicator] = useState(false)
+
 
        useEffect(()=>{
            if(email){
@@ -82,38 +83,39 @@ export default function EnterUserName(){
 
       const createUsernameNameInDb = async ()=>{
         try{
-  // get user in Database
-  const { userId } = await getCurrentUser();
-  console.log('userId : ', userId)
-    
-  // if userId returns true
-  if(userId){
-      const { data: user } = await client.models.User.list({
-        filter: {
-          sub: {
-              'eq': userId
-          }
-        }
-      });
-      console.log('User : ', user)
+            // get user in Database
+            const { userId } = await getCurrentUser();
+            console.log('userId : ', userId)
+                
+            // if userId returns true
+            if(userId){
+                const { data: user } = await client.models.User.list({
+                    filter: {
+                    sub: {
+                        'eq': userId
+                    }
+                    }
+                });
+                console.log('User : ', user)
 
-      const updatedUserDataObj = {
-          id: user[0].id,
-          username: name
-        };
-        // update user obj with username
-        const { data: updatedUserData } = await client.models.User.update(updatedUserDataObj);
-        console.log('Username created : ', updatedUserData)
-        router.push({
-            pathname: '/(auth)/enterBirthday',
-            params: {name}
-          })
-        setLoadingIndicator(false)
+                const updatedUserDataObj = {
+                    id: user[0].id,
+                    username: name
+                    };
+                    // update user obj with username
+                    const { data: updatedUserData } = await client.models.User.update(updatedUserDataObj);
+                    console.log('Username created : ', updatedUserData)
+                    router.push({
+                        pathname: '/(auth)/enterBirthday',
+                        params: {name, email, mobileNo}
+                    })
+                    setLoadingIndicator(false)
     }
         }catch(e){
             if(e instanceof Error){
                 console.log('Error adding user to database : ', e.message)
              }
+             setShowNameError('network')
              setLoadingIndicator(false)
         }
       }
@@ -192,7 +194,7 @@ export default function EnterUserName(){
                   { isUsernameAvailable == 'true'? <MaterialIcons name="cancel" size={24} color="red" /> : isUsernameAvailable == 'false'?   <AntDesign name="checkcircle" size={24} color="green" /> : null }
                   {checkingIndicator && <ActivityIndicator size='small' color='#4C4C4C'/>}
                  </Pressable>
-                 { showNameError && <Text style={{color: 'red', letterSpacing: 0.3}}>{ showNameError == 'zero'? 'Username cannot be empty' : showNameError == 'invalid input'? 'Invalid input! username must include both letters and numbers and may contain @ or _ symbol' : showNameError == 'checking'? 'Please wait while we check the availability of the username...' : 'This username is already taken. Please choose a different one.'}</Text>}
+                 { showNameError && <Text style={{color: 'red', letterSpacing: 0.3}}>{ showNameError == 'zero'? 'Username cannot be empty' : showNameError == 'invalid input'? 'Invalid input! username must include both letters and numbers and may contain @ or _ symbol' : showNameError == 'checking'? 'Please wait while we check the availability of the username...' : showNameError == 'network'? 'Something went wrong! Please check your internet connection or try again later.' : 'This username is already taken. Please choose a different one.'}</Text>}
             </View>
 
             <View style={styles.pressableBtnCont}> 
@@ -212,11 +214,16 @@ export default function EnterUserName(){
                         <View style={styles.alertBox}>
                             <Text style={styles.haveAnAccText}>Already have an account?</Text>
                             <View style={styles.actionBtnCont}>
-                                <Text style={styles.logInText}>LOG IN</Text>
-                                <Text style={styles.continueToAccText}>CONTINUE CREATING ACCOUNT</Text>
+                                <Text onPress={()=> router.push('/(auth)/signIn')} style={styles.logInText}>LOG IN</Text>
+                                <Text onPress={()=> setShowModal(false)} style={styles.continueToAccText}>CONTINUE CREATING ACCOUNT</Text>
                             </View>
                         </View>
                 </Pressable>
+            </Modal>
+            <Modal visible={loadingIndicator} onRequestClose={()=>{}} presentationStyle='overFullScreen' transparent={true}>
+                 <View style={{flex: 1}}>
+
+                 </View>
             </Modal>
         </SafeAreaView>
     // </LinearGradient>
