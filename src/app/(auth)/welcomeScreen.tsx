@@ -3,20 +3,22 @@ import { View, Text, Pressable, SafeAreaView, Image, ActivityIndicator, Modal} f
 import { Feather, AntDesign } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router';
 import { getUrl } from 'aws-amplify/storage';
-import { useState, useLayoutEffect} from 'react';
+import { useState, useLayoutEffect } from 'react';
 import { getCurrentUser } from 'aws-amplify/auth'
 import type { Schema } from '../../../amplify/data/resource'
 import { generateClient } from 'aws-amplify/data'
 import { storage } from './signIn';
+import * as FileSystem from 'expo-file-system';
 
 const client = generateClient<Schema>()
 
 export default function WelcomeScreen(){
-    const { name, email, mobileNo } = useLocalSearchParams()
+    const { name, email, mobileNo, password} = useLocalSearchParams()
     const [image, setImage] = useState<string | null>(null)
     const [loadingIndicator, setLoadingIndicator] = useState(false)
     const [errorText, showErrorText] = useState(false)
-    
+
+
     const setCompleteSignUp = async()=>{
         try{
             // get user in Database
@@ -80,10 +82,69 @@ export default function WelcomeScreen(){
             }
      }
 
+
+     const saveImageToLocal = async (imageUrl: string) => {
+        try {
+                const fileName = imageUrl.split('/').pop(); // Extract file name from the URL
+                const destinationPath = `${FileSystem.documentDirectory}${fileName}`;
+            
+                const downloadResult = await FileSystem.downloadAsync(imageUrl, destinationPath);
+                
+                return downloadResult.uri
+        } catch (error) {
+                 console.error('Error saving image:', error);
+        }
+      };
+    
+
+     
+      const setLoginDataLocally = async ()=>{
+        if(email){
+            if(typeof email !== 'string'){
+                return
+            }
+            if(typeof image !== 'string'){
+                return
+            }
+            const imagePath = await saveImageToLocal(image)
+            console.log('Image saved locally')
+            const user = {
+                username: name,
+                email: email,
+                password: password,
+                image: imagePath,
+              }
+    
+              // Serialize the object into a JSON string
+              storage.set(`${user.email} login`, JSON.stringify(user))
+              console.log('User login info saved successfully via email')
+        }else{
+            if(typeof mobileNo !== 'string'){
+                return
+            }
+            if(typeof image !== 'string'){
+                return
+            }
+            const imagePath = await saveImageToLocal(image)
+            console.log('Image saved locally')
+            const user = {
+                username: name,
+                mobile: mobileNo,
+                password: password,
+                image: imagePath,
+              }
+    
+              // Serialize the object into a JSON string
+             storage.set(`${user.mobile} login`, JSON.stringify(`${user.mobile} login`))
+          console.log('User login info saved successfully via mobileNo')
+        }
+      }
+
      const enterAppHomeScreen = async()=>{
              setLoadingIndicator(true)
              await setCompleteSignUp()
              await clearLocalStorage()
+             await setLoginDataLocally()
              console.log('Local data cleared successfully')
              router.push('/(home)/homeScreen')
      }

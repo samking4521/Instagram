@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import {View, Text, Pressable, Image, StyleSheet, ActivityIndicator, Modal, Alert} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AntDesign, Fontisto} from '@expo/vector-icons'
@@ -7,17 +7,13 @@ import * as ImgPicker from 'expo-image-picker';
 import ImagePicker from 'react-native-image-crop-picker';
 import { router, useLocalSearchParams } from 'expo-router'
 import { uploadData } from 'aws-amplify/storage';
-import type { Schema } from '../../../amplify/data/resource'
-import { generateClient } from 'aws-amplify/data'
-
-const client = generateClient<Schema>()
 
 
 export default function ProfilePicture(){
     const [openBottomSheet, setOpenBottomSheet] = useState(false)
     const [image, setImage] = useState<string | null>(null);
     const snapPoints = useMemo(()=> ['80%'], [])
-    const { name, email, mobileNo } = useLocalSearchParams()
+    const { name, email, mobileNo, password } = useLocalSearchParams()
     const [loadingIndicator, setLoadingIndicator] = useState(false)
 
 
@@ -106,7 +102,7 @@ export default function ProfilePicture(){
           console.log('Succeeded: ', result);
           router.push({
             pathname: '/(auth)/welcomeScreen',
-            params: {name, email, mobileNo}
+            params: {name, email, mobileNo, password}
           })
           setLoadingIndicator(false)
         } catch (error) {
@@ -131,7 +127,7 @@ export default function ProfilePicture(){
         }else{
           router.push({
             pathname: '/(auth)/welcomeScreen',
-            params: {name, email, mobileNo}
+            params: {name, email, mobileNo, password}
           })
         }
       }

@@ -1,30 +1,39 @@
-import { useState, useEffect, useRef } from "react"
-import { SafeAreaView, View, Text, TextInput, Pressable, Keyboard, ScrollView, Modal, StyleSheet} from "react-native"
+import { useState, useRef } from "react"
+import { SafeAreaView, View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, StyleSheet, Modal} from "react-native"
 import { AntDesign, MaterialIcons } from '@expo/vector-icons'
 import { router } from "expo-router"
 // import LinearGradient from 'react-native-linear-gradient';
 
 export default function ForgotPassword(){
     const [showUserData, setShowUserData] = useState(false)
-    const [keyboardVisible, setKeyboardVisible] = useState(false);
     const userInputRef = useRef<TextInput>(null)
-    const [userData, setUserData] = useState('')
-    const [switchData, SetSwitchData] = useState(false)
+    const [showLoadingIndicator, setShowLoadingIndicator] = useState(false)
+    const [errorText, setErrorText] = useState(false)
 
-    useEffect(() => {
-        const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
-          setKeyboardVisible(true);
-        });
-        const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
-          setKeyboardVisible(false);
-        });
-    
-        // Cleanup the listeners on component unmount
-        return () => {
-          showSubscription.remove();
-          hideSubscription.remove();
-        };
-      }, []);
+    const [userData, setUserData] = useState('')
+
+
+      const resetUserPassword = async ()=>{
+            const regEx = /(^\d{5,}$)|(^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$)/
+            if(userData.length == 0){
+                setShowUserData(true)
+            }else if(!(regEx.test(userData))){
+                setErrorText(true)
+            }else{
+                router.push({
+                    pathname:'/(auth)/newPassword',
+                    params: {userData}
+                })
+           
+            }
+      }
+
+      const updateUserData = (val: string)=>{
+            setUserData(val)
+            if(errorText){
+                setErrorText(false)
+            }
+      }
    
     return(
     //     <LinearGradient
@@ -38,31 +47,31 @@ export default function ForgotPassword(){
             <AntDesign onPress={()=> router.back()} name="arrowleft" size={24} color="black" />
             
             <View style={{marginTop: 10}}>
-                 <Text style={styles.headerText}>Find your account</Text>
-                 <Text style={styles.headerDescText}>{switchData? 'Enter your mobile number' : 'Enter your email or username'}</Text>
+                 <Text style={styles.headerText}>Forgot Password</Text>
+                 <Text style={styles.headerDescText}>Enter your email or mobile number</Text>
 
-                 <Pressable onPress={()=>{ userInputRef.current?.focus(); setShowUserData(true)}} style={styles.textInputCont}>
+                 <Pressable onPress={()=>{ userInputRef.current?.focus(); setShowUserData(true)}} style={{...styles.textInputCont, borderColor: errorText? 'red' : '#4C4C4C' }}>
                    <View style={styles.userInputCont}>
-                            { showUserData && <Text style={styles.label}>{switchData? 'Mobile number' : 'Email or username'}</Text>}
-                            {(!showUserData && userData.length == 0) && <Text style={styles.placeholder}>{switchData? 'Mobile number' : 'Email or username'}</Text>} 
-                            { showUserData && <TextInput ref={userInputRef} autoFocus={true} onBlur={()=> userData.length >= 1? setShowUserData(true) : setShowUserData(false) } cursorColor='black' style={styles.inputBox} keyboardType={switchData? 'decimal-pad' : 'default'} value={userData} onChangeText={setUserData}  />}
+                            { showUserData && <Text style={styles.label}>Email or mobile number</Text>}
+                            {(!showUserData && userData.length == 0) && <Text style={styles.placeholder}>Email or Mobile number</Text>} 
+                            { showUserData && <TextInput ref={userInputRef} autoFocus={true} onBlur={()=> userData.length >= 1? setShowUserData(true) : setShowUserData(false) } cursorColor='black' style={styles.inputBox} keyboardType={'default'} value={userData} onChangeText={updateUserData}/>}
                    </View>
-                  { (userData.length >=1 && keyboardVisible) && <MaterialIcons onPress={()=> setUserData('')} name="clear" size={30} color="#4C4C4C" />}
+                  { (userData.length >=1 ) && <MaterialIcons onPress={()=> setUserData('')} name="clear" size={30} color="#4C4C4C" />}
                  </Pressable>
-                 <Text style={styles.descText}>You may receive Whatsapp and SMS notifications from us for security and login purposes</Text>
+                 <Text style={{...styles.descText, color: errorText? 'red' : '#4C4C4C'}}>{errorText? 'Invalid email or mobile number' : 'You may receive email or SMS notifications from us for security and login purposes'}</Text>
             </View>
 
             <View style={styles.pressableContainer}> 
-                <Pressable onPress={()=> router.push({
-                    pathname: '/(auth)/confirmCode',
-                    params: {userData}
-                })} style={styles.nextBtn}>
-                    <Text style={styles.nextBtnText}>Continue</Text>
-                </Pressable>
-                <Pressable onPress={()=> SetSwitchData(!switchData)} style={styles.switchBtn}>
-                    <Text style={styles.switchText}>{switchData? 'Search by email instead' : 'Search by mobile number instead'}</Text>
+                <Pressable onPress={resetUserPassword} style={styles.nextBtn}>
+                    {showLoadingIndicator? <ActivityIndicator color='white' size='small'/> :  <Text style={styles.nextBtnText}>Continue</Text>}
+                    
                 </Pressable>
             </View>
+             <Modal visible={showLoadingIndicator} onRequestClose={()=>{}} presentationStyle='overFullScreen' transparent={true}>
+                             <View style={{flex: 1}}>
+            
+                             </View>
+                        </Modal>
             </ScrollView>
         </SafeAreaView>
     // </LinearGradient>
@@ -95,7 +104,6 @@ const styles = StyleSheet.create({
         borderWidth: 1, 
         height: 60, 
         borderRadius: 10, 
-        borderColor:'#4C4C4C', 
         backgroundColor:'#FFFFFF', 
         marginBottom: 10
     },
@@ -122,8 +130,7 @@ const styles = StyleSheet.create({
         fontSize: 18
     },
     descText: {
-        letterSpacing: 0.2, 
-        color:'#4C4C4C'
+        letterSpacing: 0.2
     },
     pressableContainer: {
         marginTop: 20, 

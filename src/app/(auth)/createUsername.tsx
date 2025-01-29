@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { SafeAreaView, View, Text, TextInput, Pressable, Keyboard, ScrollView, Modal, StyleSheet, ActivityIndicator} from "react-native"
 import { AntDesign, MaterialIcons } from '@expo/vector-icons'
 import { StatusBar } from "expo-status-bar"
@@ -7,13 +7,15 @@ import { router, useLocalSearchParams } from "expo-router"
 import type { Schema } from '../../../amplify/data/resource'
 import { generateClient } from 'aws-amplify/data'
 import { debounce } from 'lodash';
-import { getCurrentUser } from 'aws-amplify/auth';
+import { useAppSelector } from "@/src/redux/app/hooks"
+
 
 const client = generateClient<Schema>()
 
 
 export default function EnterUserName(){
-    const { email, mobileNo } = useLocalSearchParams()
+    const userAuth = useAppSelector((state) => state.auth.userAuth)
+    const { email, mobileNo, password } = useLocalSearchParams()
     const getIndex = email?.indexOf('@')
     const formatEmail: any = email?.slice(0, getIndex)
     const [name, setName] = useState(formatEmail? formatEmail : '')
@@ -83,16 +85,13 @@ export default function EnterUserName(){
 
       const createUsernameNameInDb = async ()=>{
         try{
-            // get user in Database
-            const { userId } = await getCurrentUser();
-            console.log('userId : ', userId)
-                
+            
             // if userId returns true
-            if(userId){
+            if(userAuth){
                 const { data: user } = await client.models.User.list({
                     filter: {
                     sub: {
-                        'eq': userId
+                        'eq': userAuth
                     }
                     }
                 });
@@ -107,7 +106,7 @@ export default function EnterUserName(){
                     console.log('Username created : ', updatedUserData)
                     router.push({
                         pathname: '/(auth)/enterBirthday',
-                        params: {name, email, mobileNo}
+                        params: {name, email, mobileNo, password}
                     })
                     setLoadingIndicator(false)
     }

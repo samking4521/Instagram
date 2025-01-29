@@ -4,7 +4,6 @@ import { AntDesign } from '@expo/vector-icons'
 import { StatusBar } from "expo-status-bar"
 import { router } from "expo-router"
 import PhoneInput from "react-native-phone-number-input";
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { storage } from "./signIn"
 // import LinearGradient from 'react-native-linear-gradient';
 

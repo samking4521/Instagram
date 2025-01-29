@@ -7,11 +7,15 @@ import BottomSheet, {BottomSheetView} from '@gorhom/bottom-sheet';
 import type { Schema } from '../../../amplify/data/resource'
 import { generateClient } from 'aws-amplify/data'
 import { storage } from "./signIn";
+import { useAppSelector, useAppDispatch } from "@/src/redux/app/hooks"
+import { userAuthSuccess } from "@/src/redux/features/userAuthSlice";
 
 const client = generateClient<Schema>()
 // import LinearGradient from 'react-native-linear-gradient';
 
 export default function ConfirmCode(){
+    const userAuth = useAppSelector((state) => state.auth.userAuth)
+    const dispatch = useAppDispatch()
     const [showConfirmCodeText, setShowConfirmCodeText] = useState(false)
     const [keyboardVisible, setKeyboardVisible] = useState(false);
     const [confirmCode, setConfirmCode] = useState('')
@@ -82,29 +86,28 @@ export default function ConfirmCode(){
         try{
             if(email){
                 if(typeof email === 'string' && typeof password === 'string'){
-                    //   // get currently authenticated user
-                    //   const { userId: userSub } = await getCurrentUser();
-                    //   if(userSub){
-                    //       await signOut()
-                    //       console.log('User signed out successfully')
-                    //       const { nextStep } = await signIn({
-                    //         username: email,
-                    //         password: password,
-                    //       });
-                    //       console.log('nextStep : ', nextStep)
-                    //       if(nextStep.signInStep === 'DONE'){
-                    //         console.log('Successfully signed in.');
-                    //       }
-                    //     const { userId } = await getCurrentUser();
-                    //          // Create User model and add sub id
-                    //     const createUserSub = await client.models.User.create({
-                    //         sub: userId,
-                    //         password: password,
-                    //         email: email
-                    //       })
-                    //    console.log('User sub created successfully : ', createUserSub )
+                      if(userAuth){
+                          await signOut()
+                          console.log('User signed out successfully')
+                          const { nextStep } = await signIn({
+                            username: email,
+                            password: password,
+                          });
+                          console.log('nextStep : ', nextStep)
+                          if(nextStep.signInStep === 'DONE'){
+                            console.log('Successfully signed in.');
+                          }
+                        const { userId } = await getCurrentUser();
+                        dispatch(userAuthSuccess(userId))
+                             // Create User model and add sub id
+                        const createUserSub = await client.models.User.create({
+                            sub: userId,
+                            password: password,
+                            email: email
+                          })
+                       console.log('User sub created successfully : ', createUserSub )
                               
-                    //   }else{
+                      }else{
                         const { nextStep } = await signIn({
                             username: email,
                             password: password,
@@ -114,6 +117,7 @@ export default function ConfirmCode(){
                             console.log('Successfully signed in.');
                           }
                         const { userId } = await getCurrentUser();
+                        dispatch(userAuthSuccess(userId))
                              // Create User model and add sub id
                         const createUserSub = await client.models.User.create({
                             sub: userId,
@@ -127,34 +131,33 @@ export default function ConfirmCode(){
                        console.log(`${email} confirmed true`)
                        router.push({
                             pathname: '/(auth)/enterName',
-                            params: {email}
+                            params: {email, password}
                         })
                         setShowLoadingIndicator(false)
             }else{
                 if(typeof mobileNo === 'string' && typeof password === 'string'){
-                        // // get currently authenticated user
-                        // const { userId: userSub } = await getCurrentUser();
-                        // if(userSub){
-                        //     await signOut()
-                        //     console.log('User signed out successfully')
-                        //     const { nextStep } = await signIn({
-                        //     username: mobileNo,
-                        //     password: password,
-                        //     });
-                        //     console.log('nextStep : ', nextStep)
-                        //     if(nextStep.signInStep === 'DONE'){
-                        //     console.log('Successfully signed in.');
-                        //     }
-                        // const { userId } = await getCurrentUser();
-                        //         // Create User model and add sub id
-                        // const createUserSub = await client.models.User.create({
-                        //     sub: userId,
-                        //     password: password,
-                        //     mobileNo: mobileNo
-                        //     })
-                        // console.log('User sub created successfully : ', createUserSub )
-                                
-                        // }else{
+                    if(userAuth){
+                        await signOut()
+                        console.log('User signed out successfully')
+                        const { nextStep } = await signIn({
+                          username: mobileNo,
+                          password: password,
+                        });
+                        console.log('nextStep : ', nextStep)
+                        if(nextStep.signInStep === 'DONE'){
+                          console.log('Successfully signed in.');
+                        }
+                      const { userId } = await getCurrentUser();
+                      dispatch(userAuthSuccess(userId))
+                           // Create User model and add sub id
+                      const createUserSub = await client.models.User.create({
+                          sub: userId,
+                          password: password,
+                          mobileNo: mobileNo
+                        })
+                     console.log('User sub created successfully : ', createUserSub )
+                            
+                    }else{
                         const { nextStep } = await signIn({
                             username: mobileNo,
                             password: password,
@@ -164,6 +167,7 @@ export default function ConfirmCode(){
                             console.log('Successfully signed in.');
                             }
                         const { userId } = await getCurrentUser();
+                        dispatch(userAuthSuccess(userId))
                                 // Create User model and add sub id
                         const createUserSub = await client.models.User.create({
                             sub: userId,
@@ -176,10 +180,10 @@ export default function ConfirmCode(){
                         console.log(`${mobileNo} confirmed true`)
                         router.push({
                             pathname: '/(auth)/enterName',
-                            params: {mobileNo}
+                            params: {mobileNo, password}
                         })
                         setShowLoadingIndicator(false)
-            }
+                    }}}
         }catch(e){
             if(e instanceof Error){
                 console.log('Error signing user in ', e.message)

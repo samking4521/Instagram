@@ -16,6 +16,9 @@ export default function AuthNavigator(){
             <Stack.Screen name='createUsername'/>
             <Stack.Screen name='profilePicture'/>
             <Stack.Screen name='welcomeScreen'/>
+            <Stack.Screen name='autoSignIn'/>
+            <Stack.Screen name='confirmResetCode'/>
+            <Stack.Screen name='newPassword'/>
         </Stack>
     )
 }

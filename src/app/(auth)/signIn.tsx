@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { View, Text, SafeAreaView, Image, TextInput, useWindowDimensions, Pressable, ScrollView, KeyboardAvoidingView, Platform, Keyboard, StyleSheet } from 'react-native'
-import { AntDesign, FontAwesome6, MaterialIcons } from '@expo/vector-icons'
-import { router } from 'expo-router'
+import { View, Text, SafeAreaView, Image, Alert, Modal, TextInput, useWindowDimensions, Pressable, ScrollView, KeyboardAvoidingView, Platform, Keyboard, StyleSheet, ActivityIndicator } from 'react-native'
+import { AntDesign, FontAwesome6, MaterialIcons, Feather } from '@expo/vector-icons'
+import { router, useLocalSearchParams } from 'expo-router'
 import { MMKV } from 'react-native-mmkv'
-
+import { signIn } from 'aws-amplify/auth'
 export const storage = new MMKV()
 
 export default function SignIn(){
@@ -12,11 +12,25 @@ export default function SignIn(){
     const [userInput, setUserInput] = useState('')
     const [password, setPassword] = useState('')
     const [userInputShowX, setUserInputShowX] = useState(true)
-    const [pwdXshow, setPwdXShow] = useState(true)
-    const {width, height} = useWindowDimensions()
+    const [borderColorVal, setBorderColorVal] = useState<string | null>(null)
+    const {height} = useWindowDimensions()
+    const [showPwd, setShowPwd] = useState(true)
     const [keyboardVisible, setKeyboardVisible] = useState(false);
     const pwdInputRef = useRef<TextInput>(null)
     const userInputRef = useRef<TextInput>(null)
+    const [loadingIndicator, setLoadingIndicator] = useState(false)
+    const { noNav } = useLocalSearchParams() 
+    
+
+    const showAlert = (error: string)=>{
+        Alert.alert(
+            error == 'NotAuthorizedException'? 'Incorrect username or password' : 'Network Error',
+            error == 'NotAuthorizedException'? "The username or password you entered is incorrect. Please check your username or password and try again." : "Something went wrong! Please check your internet connection or try again later.",
+            [
+              { text: "OK", onPress: () => console.log("OK Pressed") },
+            ]
+          );
+    }
   
     const ShowUserInput = ()=>{
         setShowUserInput(true)
@@ -26,9 +40,9 @@ export default function SignIn(){
 
     const ShowPasswordInput = ()=>{
         setShowPwdInput(true)
-        setPwdXShow(true)
         pwdInputRef.current?.focus()
     }
+
 
     useEffect(() => {
         const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -45,6 +59,36 @@ export default function SignIn(){
         };
       }, []);
 
+      const signInUser = async (userInput: string, password: string)=>{
+        try{
+            if(userInput.length == 0){
+                setShowUserInput(true)
+            }else if(password.length == 0){
+                setShowPwdInput(true)
+            }else{
+                Keyboard.dismiss()
+                setLoadingIndicator(true)
+                await signIn({
+                    username: userInput,
+                    password: password,
+                    })
+                console.log('User signed in successfully')
+                router.push('/(home)/homeScreen')
+                setLoadingIndicator(false)
+            }
+        }catch(e){
+            if(e instanceof Error){
+                console.log('Error signing in user : ', e.name)
+                if(e.name == 'NotAuthorizedException'){
+                    showAlert('NotAuthorizedException')
+                }else{
+                    showAlert('Network')
+                }
+            }
+            setLoadingIndicator(false)
+        }
+      }
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -52,30 +96,29 @@ export default function SignIn(){
        behavior={Platform.OS == 'ios'? 'padding' : 'height'}
       >
         <ScrollView keyboardShouldPersistTaps={'handled'} showsVerticalScrollIndicator={false} contentContainerStyle={{flexGrow: 1}}>
-            <AntDesign name="arrowleft" size={24} color="black" />
+           { !noNav && <AntDesign onPress={()=> router.push('/(auth)/autoSignIn')} name="arrowleft" size={24} color="black" />}
             <View style={{flex: 1}}>
                  <Image source={require('../../../assets/images/instagram_icon.jpeg')} style={{...styles.image, marginTop: keyboardVisible? 5/100 * height : 15/100 * height, marginBottom: keyboardVisible? 5/100 * height : 10/100 * height}}/>
                  <View>
-
-                    <Pressable onPress={ShowUserInput} style={styles.userInput}>
+                    <Pressable onPress={ShowUserInput} style={{...styles.userInput, borderColor: borderColorVal == 'data1'? 'black' : '#4C4C4C'}}>
                       <View style={styles.userInputContainer}>
                             { showUserInput && <Text style={styles.label}>Username, email or mobile number</Text>}
                             { !showUserInput && <Text style={styles.placeholder}>Username, email or mobile number</Text>}
-                            { showUserInput && <TextInput ref={userInputRef} onFocus={()=> setUserInputShowX(true)} onBlur={()=>{ if(userInput.length == 0){ setShowUserInput(false)}else{setUserInputShowX(false)} }} style={styles.inputBox} value={userInput} onChangeText={setUserInput} keyboardType='default' autoFocus={true} />}
+                            { showUserInput && <TextInput ref={userInputRef} onFocus={()=> {setBorderColorVal('data1'); setUserInputShowX(true)}} onBlur={()=>{ if(userInput.length == 0){ setShowUserInput(false)}else{setUserInputShowX(false)} }} style={styles.inputBox} value={userInput} onChangeText={setUserInput} keyboardType='default' autoFocus={true} />}
                       </View>   
                       { (userInput.length >=1 && userInputShowX) && <MaterialIcons onPress={()=> setUserInput('')} name="clear" size={30} color="#4C4C4C" />}
                     </Pressable>
 
-                    <Pressable onPress={ShowPasswordInput} style={styles.userInput}>
+                    <Pressable onPress={ShowPasswordInput} style={{...styles.userInput, borderColor: borderColorVal == 'data2'? 'black' : '#4C4C4C'}}>
                         <View style={styles.userInputContainer}>
                             { showPwdInput && <Text style={styles.label}>Password</Text>}
                             { !showPwdInput && <Text style={styles.placeholder}>Password</Text>}
-                            { showPwdInput && <TextInput ref={pwdInputRef} onFocus={()=> setPwdXShow(true)} onBlur={()=>{ if(password.length == 0){setShowPwdInput(false)}else{setPwdXShow(false)} }} style={styles.inputBox} value={password} onChangeText={setPassword} autoFocus={true} keyboardType='default' secureTextEntry={true} cursorColor={'black'} />}
+                            { showPwdInput && <TextInput ref={pwdInputRef} onFocus={()=> { setBorderColorVal('data2')}} onBlur={()=>{ if(password.length == 0){setShowPwdInput(false)}}} style={styles.inputBox} value={password} onChangeText={setPassword} autoFocus={true} keyboardType='default' secureTextEntry={ showPwd? true : false} cursorColor={'black'} />}
                         </View>
-                        { (password.length >=1 && pwdXshow) && <MaterialIcons onPress={()=> setPassword('')} name="clear" size={30} color="#4C4C4C" />}
+                        { (password.length >=1) && <Feather onPress={()=> setShowPwd(!showPwd)} name={showPwd? "eye" : "eye-off"} size={28} color="#4C4C4C" />}
                     </Pressable>
-                    <Pressable style={styles.logInContainer}>
-                        <Text style={styles.logInText}>Log in</Text>
+                    <Pressable onPress={()=>signInUser(userInput, password)} style={styles.logInContainer}>
+                        {loadingIndicator? <ActivityIndicator size='small' color='white'/> : <Text style={styles.logInText}>Log in</Text>}
                     </Pressable>
 
                     <Text onPress={()=> router.push('/(auth)/forgotPwd')} style={styles.passwordText}>Forgot password?</Text>
@@ -93,6 +136,11 @@ export default function SignIn(){
                     </View>
                 </View>
             </View>
+             <Modal visible={loadingIndicator} onRequestClose={()=>{}} presentationStyle='overFullScreen' transparent={true}>
+                             <View style={{flex: 1}}>
+            
+                             </View>
+            </Modal>
         </ScrollView>
     </KeyboardAvoidingView>
     </SafeAreaView>

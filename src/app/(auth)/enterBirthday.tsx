@@ -7,12 +7,12 @@ import DatePicker from 'react-native-date-picker'
 import LinearGradient from 'react-native-linear-gradient';
 import type { Schema } from '../../../amplify/data/resource'
 import { generateClient } from 'aws-amplify/data'
-import { getCurrentUser } from "aws-amplify/auth"
-
+import { useAppSelector } from "@/src/redux/app/hooks"
 
 const client = generateClient<Schema>()
 
 export default function EnterBirthday(){
+    const userAuth = useAppSelector((state) => state.auth.userAuth)
     const [keyboardVisible, setKeyboardVisible] = useState(false);
     const [date, setDate] = useState(new Date())
     const [open, setOpen] = useState(true)
@@ -21,7 +21,7 @@ export default function EnterBirthday(){
     const [userAge, setUserAge] = useState(0)
     const [showDateError, setShowDateError] = useState<string | boolean>(false)
     const [loadingIndicator, setLoadingIndicator] = useState(false)
-    const {name, email, mobileNo} = useLocalSearchParams()
+    const {name, email, mobileNo, password} = useLocalSearchParams()
 
     const getUserAge = ()=>{
         const currentDate = new Date().getFullYear();
@@ -66,11 +66,13 @@ export default function EnterBirthday(){
 
      const addUserBirthdayToDb = async()=>{
         try{
-            const { userId } = await getCurrentUser()
+            if(!userAuth){
+                return
+            }
             const {data: user} = await client.models.User.list({
                 filter: {
                     sub: {
-                        'eq': userId
+                        'eq': userAuth
                     }
                 }
             })
@@ -83,7 +85,7 @@ export default function EnterBirthday(){
                 console.log('User birthday added successfully : ', addDob )
                 router.push({
                     pathname: '/(auth)/profilePicture',
-                    params: {name, email, mobileNo}
+                    params: {name, email, mobileNo, password}
                   })
                 setLoadingIndicator(false)
            }
