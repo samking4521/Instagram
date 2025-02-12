@@ -21,7 +21,6 @@ export default function SignIn(){
     const [loadingIndicator, setLoadingIndicator] = useState(false)
     const { noNav } = useLocalSearchParams() 
     
-
     const showAlert = (error: string)=>{
         Alert.alert(
             error == 'NotAuthorizedException'? 'Incorrect username or password' : 'Network Error',

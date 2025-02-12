@@ -1,0 +1,54 @@
+[
+    {
+        "id": 1
+    },
+    {
+        "id": 2,
+        "username": "wizkidayo",
+        "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQHKlHW16mSsfUfmYsnnII_O0YDnEyUnz9wsw&s",
+        "following": "true"
+    },
+    {
+        "id": 3,
+        "username": "symplysimi",
+        "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQKWGp5RcynjRclmGF0D2sEGYaXL5glJBnSxA&s",
+        "following": "true"
+    },
+    {
+        "id": 4,
+        "username": "regina.daniels",
+        "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSq9BlEFqguoFNVXiZA45Rbe5xalUE8OJy8rw&s",
+        "following": "true"
+    },
+    {
+        "id": 5,
+        "username": "davido",
+        "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTLZQMrMYsS6RZI2Kbu491OWlTzwfmFNuqC7Q&s",
+        "following": "true"
+    },
+    {
+        "id": 6,
+        "username": "basketmouth",
+        "image": "https://cdn.pmnewsnigeria.com/2015/12/BASKETMOUTH1.jpg",
+        "following": "true"
+    },
+    {
+        "id": 7,
+        "username": "tiwasavage",
+        "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS-bT7kq9RQrELc7UaAuWQTFc4OAqELCsYSjA&s",
+        "following": "false"
+    },
+    {
+        "id": 8,
+        "username": "kyliejenner",
+        "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRwTZXl9tyT4Cyk0g0SNGdwGJceBxlR9T0gcQ&s",
+        "following": "false"
+    },
+    {
+        "id": 9,
+        "username": "kimkardashian",
+        "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQMRW5U1tNomj0nD-3mZjXr4Kn6TOE-BMr7Dg&s",
+        "following": "false"
+    }
+    
+]

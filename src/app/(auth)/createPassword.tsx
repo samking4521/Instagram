@@ -203,7 +203,7 @@ export default function CreatePassword(){
                             { showPwdErr === 'zero' && <Text style={styles.placeholder}>Password</Text>}
                             { showPwdErr !== 'zero' && <TextInput autoFocus={true} cursorColor='black' secureTextEntry={showPwd? false : true} style={styles.inputBox} keyboardType='default' value={password} onChangeText={updatePassword}  />}                   
                 </View>
-                        { showPwdErr?  <AntDesign name="exclamationcircleo" size={24} color="red" /> :  <Feather onPress={()=> setShowPwd(!showPwd)} name={showPwd? "eye" : "eye-off"} size={28} color="#4C4C4C" />}                
+                        { showPwdErr?  <AntDesign name="exclamationcircleo" size={24} color="red" /> :  <Feather onPress={()=> setShowPwd(!showPwd)} name={showPwd? "eye-off" : "eye"} size={28} color="#4C4C4C" />}                
                  </Pressable>
                  {showPwdErr && <Text style={{color:"red", letterSpacing: 0.5}}>{showPwdErr == 'zero'? 'Password cannot be empty' : showPwdErr == 'less than 6'? 'This password is too short. Create a longer password with at least 6 letters and numbers' : showPwdErr == 'invalid password'? 'Password must contain letters and at least one number' : showPwdErr == 'user exists'? 'User already exists' : 'Something went wrong! check your internet connection or try again later'}</Text>}
 

@@ -18,7 +18,7 @@ const schema = a.schema({
       mobileNo: a.string(),
       password: a.string()
     })
-    .authorization((allow) => [allow.owner()]),
+    .authorization((allow) => [allow.guest()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;

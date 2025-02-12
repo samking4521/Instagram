@@ -146,7 +146,7 @@ export default function WelcomeScreen(){
              await clearLocalStorage()
              await setLoginDataLocally()
              console.log('Local data cleared successfully')
-             router.push('/(home)/homeScreen')
+             router.push('/(home)/explore')
      }
 
     return(

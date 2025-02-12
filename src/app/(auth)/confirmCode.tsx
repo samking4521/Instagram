@@ -86,28 +86,6 @@ export default function ConfirmCode(){
         try{
             if(email){
                 if(typeof email === 'string' && typeof password === 'string'){
-                      if(userAuth){
-                          await signOut()
-                          console.log('User signed out successfully')
-                          const { nextStep } = await signIn({
-                            username: email,
-                            password: password,
-                          });
-                          console.log('nextStep : ', nextStep)
-                          if(nextStep.signInStep === 'DONE'){
-                            console.log('Successfully signed in.');
-                          }
-                        const { userId } = await getCurrentUser();
-                        dispatch(userAuthSuccess(userId))
-                             // Create User model and add sub id
-                        const createUserSub = await client.models.User.create({
-                            sub: userId,
-                            password: password,
-                            email: email
-                          })
-                       console.log('User sub created successfully : ', createUserSub )
-                              
-                      }else{
                         const { nextStep } = await signIn({
                             username: email,
                             password: password,
@@ -125,8 +103,7 @@ export default function ConfirmCode(){
                             email: email
                           })
                        console.log('User sub created successfully : ', createUserSub )
-                      }
-                    
+                      
                        await storeDataLocally(true)
                        console.log(`${email} confirmed true`)
                        router.push({
@@ -136,28 +113,6 @@ export default function ConfirmCode(){
                         setShowLoadingIndicator(false)
             }else{
                 if(typeof mobileNo === 'string' && typeof password === 'string'){
-                    if(userAuth){
-                        await signOut()
-                        console.log('User signed out successfully')
-                        const { nextStep } = await signIn({
-                          username: mobileNo,
-                          password: password,
-                        });
-                        console.log('nextStep : ', nextStep)
-                        if(nextStep.signInStep === 'DONE'){
-                          console.log('Successfully signed in.');
-                        }
-                      const { userId } = await getCurrentUser();
-                      dispatch(userAuthSuccess(userId))
-                           // Create User model and add sub id
-                      const createUserSub = await client.models.User.create({
-                          sub: userId,
-                          password: password,
-                          mobileNo: mobileNo
-                        })
-                     console.log('User sub created successfully : ', createUserSub )
-                            
-                    }else{
                         const { nextStep } = await signIn({
                             username: mobileNo,
                             password: password,
@@ -175,7 +130,6 @@ export default function ConfirmCode(){
                             mobileNo: mobileNo
                             })
                         console.log('User sub created successfully : ', createUserSub )
-                        }
                         await storeDataLocally(true)
                         console.log(`${mobileNo} confirmed true`)
                         router.push({

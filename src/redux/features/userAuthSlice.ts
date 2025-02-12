@@ -1,10 +1,12 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 
 type initialState = {
-    userAuth: string | null
+    userAuth: string | null,
+    showModal: boolean
 }
 const initialState: initialState = {
-    userAuth: null
+    userAuth: null,
+    showModal: true
 }
 
 const userAuthSlice = createSlice({
@@ -13,9 +15,11 @@ const userAuthSlice = createSlice({
     reducers: {
         userAuthSuccess: (state, action: PayloadAction<string>)=>{
             state.userAuth = action.payload
+            state.showModal = false
         },
         userAuthError: (state)=>{
             state.userAuth = null
+            state.showModal = false
         }
     }
 })
