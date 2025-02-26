@@ -1,0 +1,72 @@
+[
+    {
+       "id": 1,
+      "platform": "ios",
+      "fontFamily": "San Francisco"
+    },
+    {
+      "id": 2,
+      "platform": "ios",
+      "fontFamily": "Helvetica"
+    },
+    {
+      "id": 3,
+      "platform": "ios",
+      "fontFamily": "Arial"
+    },
+    {
+      "id": 4,
+      "platform": "ios",
+      "fontFamily": "Courier"
+    },
+    {
+      "id": 5,
+      "platform": "ios",
+      "fontFamily": "Courier New"
+    },
+    {
+      "id": 6,
+      "platform": "ios",
+      "fontFamily": "Verdana"
+    },
+    {
+      "id": 7,
+      "platform": "ios",
+      "fontFamily": "Futura"
+    },
+    {
+      "id": 8,
+      "platform": "ios",
+      "fontFamily": "Chalkboard SE"
+    },
+    {
+      "id": 9,
+      "platform": "ios",
+      "fontFamily": "alatino"
+    },
+    {
+      "id": 10,
+      "platform": "ios",
+      "fontFamily": "Menlo"
+    },
+    {
+      "id": 11,
+      "platform": "ios",
+      "fontFamily": "Didot"
+    },
+    {
+      "id": 12,
+      "platform": "ios",
+      "fontFamily": "Chalkduster"
+    },
+    {
+      "id": 13,
+      "platform": "ios",
+      "fontFamily": "Trebuchet MS"
+    },
+    {
+      "id": 14,
+      "platform": "ios",
+      "fontFamily": "Gill Sans"
+    }
+ ]

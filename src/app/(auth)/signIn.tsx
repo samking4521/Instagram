@@ -72,7 +72,7 @@ export default function SignIn(){
                     password: password,
                     })
                 console.log('User signed in successfully')
-                router.push('/(home)/homeScreen')
+                router.push('/(home)/explore')
                 setLoadingIndicator(false)
             }
         }catch(e){

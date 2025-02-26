@@ -1,0 +1,47 @@
+[
+    {
+        "id": 1,
+        "platform": "android",
+        "fontFamily": "Roboto"
+      },
+      {
+        "id": 2,
+        "platform": "android",
+        "fontFamily": "Helvetica"
+      },
+      {
+        "id": 3,
+        "platform": "android",
+        "fontFamily": "monospace"
+      },
+      {
+        "id": 4,
+        "platform": "android",
+        "fontFamily": "serif"
+      },
+      {
+        "id": 5,
+        "platform": "android",
+        "fontFamily": "sans-serif"
+      },
+      {
+        "id": 6,
+        "platform": "android",
+        "fontFamily": "sans-serif-thin"
+      },
+      {
+        "id": 7,
+        "platform": "android",
+        "fontFamily": "sans-serif-condensed"
+      },
+      {
+        "id": 8,
+        "platform": "android",
+        "fontFamily": "sans-serif-light"
+      },
+      {
+        "id": 9,
+        "platform": "android",
+        "fontFamily": "cursive"
+      }
+   ]
