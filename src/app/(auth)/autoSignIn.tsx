@@ -60,7 +60,7 @@ export default function AutoSignIn(){
         })
         console.log('User signed in successfully : ')
         setShowModal(false)
-        router.push('/(home)/homeScreen')
+        router.push('/(home)/explore')
     }
 
     const deleteLogInData = ()=>{

@@ -49,7 +49,7 @@ export default function LiveCamera() {
   return (
     <SafeAreaView style={{flex: 1, paddingTop: 20}}>
       {
-          captureMode == 'POST'? <PostCapture isFront={isFront}/> : captureMode == 'STORY'? <StoryCapture isFront={isFront} /> : <ReelCapture isFront={isFront}/>
+          captureMode == 'POST'? <PostCapture isFront={isFront} uri={typeof uri === 'string' ? uri : uri[0]}/> : captureMode == 'STORY'? <StoryCapture isFront={isFront} /> : <ReelCapture isFront={isFront}/>
       }
        <View style={{ marginTop:'auto', paddingHorizontal: 20, height: '10%', alignItems:'center', flexDirection:'row', justifyContent:'space-between', backgroundColor:'black'}}>
           <Pressable onPress={()=> router.push('/(home)/post')} style={{borderWidth: 2, borderColor:'white', borderRadius: 10, marginRight: '30%'}}>

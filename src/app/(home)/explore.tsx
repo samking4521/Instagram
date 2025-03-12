@@ -1,5 +1,5 @@
 import { View, Text, Image, FlatList } from 'react-native'
-import React from 'react'
+import React, { useLayoutEffect } from 'react'
 import { SafeAreaView } from 'react-native'
 import { useFonts } from 'expo-font'
 import { Feather } from '@expo/vector-icons'
@@ -7,9 +7,12 @@ import UsersFollowing from '../../../assets/users.json'
 import LinearGradient from 'react-native-linear-gradient';
 
 export default function Explore(){
+ 
   useFonts({
     'Pacifico-Regular': require('../../../assets/fonts/Pacifico-Regular.ttf'),
    });
+ 
+  
 
   return (
     <SafeAreaView style={{flex: 1, backgroundColor:'white'}}>

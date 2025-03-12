@@ -1,17 +1,39 @@
-import { View, Text, Pressable, Button, Image, Modal, Alert, FlatList, useWindowDimensions} from 'react-native'
-import { useCameraPermission, useCameraDevice, Camera } from 'react-native-vision-camera';
+import { View, Text, Pressable, Image, Modal, Alert, FlatList, useWindowDimensions, StatusBar, Platform, ViewToken} from 'react-native'
+import { useCameraPermission, useCameraDevice, Camera, useCameraFormat, CameraProps, useMicrophonePermission, useSkiaFrameProcessor, DrawableFrameProcessor } from 'react-native-vision-camera';
 import { AntDesign, MaterialCommunityIcons, Ionicons, Fontisto, MaterialIcons} from '@expo/vector-icons'
 import { router } from 'expo-router';
 import { useState, useRef, useEffect } from 'react';
 import * as MediaLibrary from 'expo-media-library';
+import Reanimated, { useAnimatedProps, useSharedValue, interpolate, Extrapolation } from 'react-native-reanimated'
+import { Gesture, GestureDetector } from 'react-native-gesture-handler'
+import EditMediaCapture from './editMediaCapture';
+import ColorMatrices from '../../assets/colorMatrices.json'
+import { Canvas, Image as SkiaImage, Group, Skia, useImage, ColorMatrix, makeImageFromView, SkImage } from "@shopify/react-native-skia";
+
+
+Reanimated.addWhitelistedNativeProps({
+  zoom: true,
+})
+const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera)
 
 export default function StoryCapture({ isFront }: { isFront: boolean }){
    const [assets, setAssets] = useState<Assets[]>([])
     const cameraRef = useRef<Camera>(null);
+
     const { hasPermission, requestPermission } = useCameraPermission();
+    const { hasPermission: audioPermission, requestPermission: requestAudioPermission } = useMicrophonePermission();
+    
     const device = useCameraDevice(isFront? 'front' : 'back');
+    const format = useCameraFormat(device, [
+        { fps: 240 }
+      ])
+      const minFps = format ? Math.max(format.minFps, 20) : 20;
+      const maxFps = format ? Math.min(format.maxFps, 30) : 30;
     const [flash, setFlash] = useState(false)
+    const [showDeviceModal, setShowDeviceModal] = useState(false)
     const [image, setImage] = useState<string | null>(null)
+    const [video, setVideo] = useState<VideoType | null>(null)
+    const [editCaptureModal, setEditCaptureModal] = useState(false)
     const [isRecording, setIsRecording] = useState(false);
     const [seconds, setSeconds] = useState(0);
     const [handsFree, setHandsFree] = useState(false)
@@ -21,7 +43,16 @@ export default function StoryCapture({ isFront }: { isFront: boolean }){
     const [displayTimer, setDisplayTimer] = useState(-1)
     const [openGallery, setOpenGallery] = useState(true)
     const { width, height} = useWindowDimensions()
+    const [currentViewableMedia, setCurrentViewableMedia] = useState<ViewToken>()
+    const zoom = useSharedValue(device?.neutralZoom)
+    const zoomOffset = useSharedValue(0);
+    const skiaImage = useImage(require('../../assets/images/modelImg.jpeg'))
 
+
+    type VideoType = {
+       duration: number,
+       path: string
+    }
 
     type Assets = {
       mediaType: string,
@@ -29,6 +60,38 @@ export default function StoryCapture({ isFront }: { isFront: boolean }){
       duration: number
     }
 
+    // Define the viewability configuration
+      const viewabilityConfig = useRef({
+        itemVisiblePercentThreshold: 100, // Item is considered visible if at least 50% of it is visible
+      }).current;
+
+ // Callback function to handle viewable items change
+  const onViewableItemsChanged = ({ viewableItems } : {viewableItems: ViewToken[]}) => {
+    setCurrentViewableMedia(viewableItems[0])
+    // You can perform actions based on the currently visible items here
+  }
+  
+  const normalMatrix = [
+    1, 0, 0, 0, 0,  
+    0, 1, 0, 0, 0,  
+    0, 0, 1, 0, 0, 
+    0, 0, 0, 1, 0
+  ]
+    
+       
+        const colorFilter = Skia.ColorFilter.MakeMatrix(currentViewableMedia? currentViewableMedia.item.matrice : normalMatrix );
+        const paint = Skia.Paint();
+        paint.setColorFilter(colorFilter);
+      
+        const frameProcessor = useSkiaFrameProcessor((frame) => {
+          "worklet";
+          frame.render(paint);
+        }, [paint]);
+          
+        
+    
+    
+    
     const getRecentMedia = async () => {
         try {
           // Request permissions
@@ -44,7 +107,6 @@ export default function StoryCapture({ isFront }: { isFront: boolean }){
             sortBy: [[MediaLibrary.SortBy.creationTime, false]], // Sort descending (recent first)
           });
       
-          console.log('Recent Media:', media.assets);
           setAssets(media.assets);
         } catch (error) {
           console.error('Error fetching media:', error);
@@ -76,27 +138,49 @@ export default function StoryCapture({ isFront }: { isFront: boolean }){
   };
 
 
+  const showDeviceModalAlert = ()=>{
+    Alert.alert(
+      "No Camera",
+      "This device has no camera available",
+      [
+        { text: "Cancel", onPress: ()=> router.back()},
+        { text: "OK", onPress: ()=> console.log('Pressed Ok') }
+      ]
+    );
+  }
 
-    if (!hasPermission) {
-        return (
-          <View>
-            <Text>No permission. Please grant camera access.</Text>
-            <Button title="Grant Permission" onPress={requestPermission} />
-          </View>
-        );
-      }
+  useEffect(()=>{
+    if(device == null){
+       showDeviceModalAlert()
+       setShowDeviceModal(true)
+    }
+  }, [device])
     
-      if (device == null) return <Text>No camera device found</Text>;
 
+useEffect(()=>{
+   if(!hasPermission){
+      requestPermission()
+   }else{
+    if(!audioPermission){
+      requestAudioPermission()
+    }
+   }
+}, [hasPermission])
+
+    
       const TakePicture = async () => {
         try{
             console.log('image captured')
             if (cameraRef.current) {
                 const photo = await cameraRef.current.takePhoto();
-                console.log(photo.path); // Path to the captured image
+                setImage(`file://${photo.path}`)
+                setEditCaptureModal(true)
               }
         }catch(e){
-            console.log('Error : ', e)
+          if(e instanceof Error){
+            console.log('Error msg : ', e.message)
+          }
+            
         }
       
       };
@@ -106,10 +190,12 @@ export default function StoryCapture({ isFront }: { isFront: boolean }){
             return
         }
           try {
-            const video = await cameraRef.current.startRecording({
+            await cameraRef.current.startRecording({
               flash: flash? 'on' : 'off' ,
               onRecordingFinished: (video) => {
-                console.log('Video saved:', video);
+                console.log('Video saved');
+                setVideo(video)
+                setEditCaptureModal(true)
               },
               onRecordingError: (error) => {
                 console.error('Recording error:', error);
@@ -156,9 +242,7 @@ export default function StoryCapture({ isFront }: { isFront: boolean }){
         }, [openGallery])
 
      
-          useEffect(()=>{
-              console.log('Display timer : ', displayTimer)
-          }, [displayTimer])
+         
 
           const recordVideoAfterTimer = (time: number)=>{
                countdownTimer(time + 1, 'video')
@@ -202,23 +286,68 @@ export default function StoryCapture({ isFront }: { isFront: boolean }){
                 return `0:${ss}`; // Seconds format
             }
         }
+
+        const gesture = Gesture.Pinch()
+            .onBegin(() => {
+              zoomOffset.value = zoom.value ?? 1
+            })
+            .onUpdate(event => {
+              const z = zoomOffset.value * event.scale
+              if (device) {
+                zoom.value = interpolate(
+                  z,
+                  [1, 10],
+                  [device.minZoom, device.maxZoom],
+                  Extrapolation.CLAMP,
+                );
+              }
+            })
+        
+          const animatedProps = useAnimatedProps<CameraProps>(
+            () => ({ zoom: zoom.value }),
+            [zoom]
+          )
+
+          if(device == null){
+            return(
+              <Modal visible={showDeviceModal} onRequestClose={()=> setShowDeviceModal(false)} animationType='fade' presentationStyle='overFullScreen' transparent={true}>
+                      <View style={{flex: 1, backgroundColor:'rgba(0,0,0,0.5)'}}>       
+                       </View>
+              </Modal>
+            )   
+          }
+
     return(
         <View style={{flex: 1}}>
-         {  image? <View style={{flex: 1, justifyContent:'center', alignItems:'center'}}>
-                    <Image source={{ uri : image}} resizeMode='contain' style={{width: 400, height: 400}}/>
-                </View> : 
-            <View style={{flex: 1}}>
-            <Camera
-            torch={flash? 'on' : 'off'}
-            photo={true}
-            ref={cameraRef}
-            style={{flex: 1}}
-            device={device}
-            isActive={true}
-            video={true}
-          />
-            <View style={{position: 'absolute', width: '100%', height: '100%'}}>
-              <View style={{ paddingHorizontal: 30, paddingTop: 15, flexDirection:'row', justifyContent:'space-between'}}>
+         {  editCaptureModal?
+                   <EditMediaCapture mode={'story'} video={video} setVideo={setVideo} photo={image} setImage={setImage} editCaptureModal={editCaptureModal} setEditCaptureModal={setEditCaptureModal} currentViewableMedia={currentViewableMedia as ViewToken}  /> 
+               : 
+            <View style={{flex: 1, zIndex: 1}}>
+              <GestureDetector gesture={gesture}>
+                <View style={{flex: 1}}>
+               <ReanimatedCamera
+                   lowLightBoost={true}
+                   exposure={0}
+                   torch={flash? 'on' : 'off'}
+                   photo={true}
+                   format={format}
+                   fps={[minFps, maxFps]}
+                   ref={cameraRef}
+                   style={{flex: 1, scaleX: 1}}
+                   device={device}
+                   isActive={true}
+                   video={true}
+                   audio={true}
+                   videoBitRate="high"
+                  photoQualityBalance="speed"
+                   animatedProps={animatedProps}
+                   frameProcessor={frameProcessor}
+                   pixelFormat={Platform.OS == 'ios'? 'rgb' : 'yuv'}
+                   outputOrientation={'device'}
+                  
+                />
+            <View style={{position: 'absolute', width: '100%', height: '100%', paddingTop: StatusBar.currentHeight,}}>
+              <View style={{ paddingHorizontal: 30,  flexDirection:'row', justifyContent:'space-between'}}>
                 <AntDesign onPress={()=> router.push('/(home)/post')} name="close" size={30} color="white" />
                 <MaterialCommunityIcons onPress={()=> setFlash(!flash)} name={flash? 'flash': "flash-off"} size={30} color="white" />
                 <AntDesign name="setting" size={30} color="white" />     
@@ -235,35 +364,73 @@ export default function StoryCapture({ isFront }: { isFront: boolean }){
                              </View>
               </Modal> :  <View style={{top:'40%', marginLeft: 10}}>
                      <View style={{flexDirection:'row', alignItems:'center', marginBottom: 10}}>
-                     <Ionicons name="musical-notes-outline" size={35} color="white" style={{width: 40, height: 40, marginRight: 10}} />
-                     <Text style={{color:'white', fontWeight:'500', letterSpacing: 0.3}}>Music</Text>
+                     <Ionicons name="musical-notes-outline" size={30} color="white" style={{width: 35, height: 35, marginRight: 10}} />
+                     <Text style={{color:'white', fontWeight:'500', letterSpacing: 0.3, fontSize: 13}}>Music</Text>
                       </View>
 
                    <Pressable onPress={()=> setHandsFree(!handsFree)} style={{flexDirection:'row', alignItems:'center', marginBottom: 10, alignSelf:'flex-start'}}>
-                    <View style={{backgroundColor: handsFree? 'white' : undefined, borderRadius: handsFree? 40: undefined, width: handsFree? 40 : undefined, height: handsFree? 40 : undefined, alignItems: handsFree? 'center' : undefined,  justifyContent:handsFree? 'center' : undefined, marginRight: 10}}>
-                        <Ionicons name="stop-circle-outline" size={35}  color={handsFree? 'red' : "white"} />
+                    <View style={{backgroundColor: handsFree? 'white' : undefined, borderRadius: handsFree? 40: undefined, width: handsFree? 35 : undefined, height: handsFree? 35 : undefined, alignItems: handsFree? 'center' : undefined,  justifyContent:handsFree? 'center' : undefined, marginRight: 10}}>
+                        <Ionicons name="stop-circle-outline" size={30}  color={handsFree? 'red' : "white"} />
                     </View>
-                        <Text style={{color:'white', fontWeight:'500', letterSpacing: 0.3}}>Hands-free</Text>
+                        <Text style={{color:'white', fontWeight:'500', letterSpacing: 0.3, fontSize: 13}}>Hands-free</Text>
                       </Pressable>
 
                       <Pressable onPress={()=> setShowModal(true)} style={{flexDirection:'row', alignItems:'center', marginBottom: 10, alignSelf:'flex-start'}}>
-                          <Ionicons name="timer-outline" size={35} color={timer>0? "red" : "white"}  style={{width: 40, height: 40, marginRight: 10}}/>
+                          <Ionicons name="timer-outline" size={30} color={timer>0? "red" : "white"}  style={{width: 35, height: 35, marginRight: 10}}/>
                           { timer>0? <MaterialIcons name={ timer == 3? "timer-3" : "timer-10"} size={24} color="white" /> : <Text style={{color:'white', fontWeight:'500', letterSpacing: 0.3}}>Timer</Text>}
                       </Pressable>
 
                         <View style={{flexDirection:'row', alignItems:'center', alignSelf:'flex-start'}}>
-                        <MaterialCommunityIcons name="view-gallery-outline" size={30} color="white" style={{width: 40, height: 40, marginRight: 10}}/>
-                          <Text style={{color:'white', fontWeight:'500', letterSpacing: 0.3}}>Gallery</Text>
+                        <MaterialCommunityIcons name="view-gallery-outline" size={30} color="white" style={{width: 35, height: 35, marginRight: 10}}/>
+                          <Text style={{color:'white', fontWeight:'500', letterSpacing: 0.3, fontSize: 13}}>Gallery</Text>
                         </View>
 
                         
                 </View>}
-           <Pressable onLongPress={ timer>0? ()=> recordVideoAfterTimer(timer) : ()=> {setIsRecording(true); startRecording()}} onPressOut={ handsFree? ()=>{} : ()=> {setIsRecording(false); stopRecording()}} onPress={()=> snap(timer)} style={{ top: 20, zIndex: 1, alignSelf: 'center', marginTop:'auto', width: 90, height: 90, borderRadius: 90, backgroundColor:isRecording? 'green' : 'white', padding: 5}}>
-              <View style={{width: 80, height: 80, borderRadius: 80, borderColor: isRecording? 'white' : 'black', borderWidth: 2, backgroundColor:isRecording? 'green' : 'white'}}>
-              </View>
-           </Pressable>
+           
+            <View style={{ marginTop:'auto'}}>
+              <Pressable style={{zIndex: 1, position:'absolute', left: (50/100 * width - 40), top: 5, width: 90, height: 90, borderRadius: 90, borderWidth: 2, borderColor: 'white'}}>
+              </Pressable>
+              <FlatList 
+               style={{borderTopLeftRadius: 90, borderBottomLeftRadius: 90, width: (50/100 * width) + 40, top: 5, alignSelf:'flex-end', borderColor:'white', zIndex: 2}}
+                contentContainerStyle={{alignItems:'center', paddingRight: 180}}
+                horizontal
+                snapToInterval={90} // Snap to each item
+                snapToAlignment="start"
+                decelerationRate="fast"
+                showsHorizontalScrollIndicator={false}
+                onViewableItemsChanged={onViewableItemsChanged}
+                viewabilityConfig={viewabilityConfig}
+                data={ColorMatrices} renderItem={(({item, index})=>{
+                  const whiteMatrix = [
+                    0, 0, 0, 0, 1,  
+                    0, 0, 0, 0, 1,  
+                    0, 0, 0, 0, 1,  
+                    0, 0, 0, 1, 0   
+                  ]
+                  return(
+                    
+                        <View style={{width: 90, height: 90, alignItems:'center', justifyContent:'center'}}>
+                          <Pressable onLongPress={ timer>0? ()=> recordVideoAfterTimer(timer) : ()=> {setIsRecording(true); startRecording()}} onPressOut={ handsFree? ()=>{} : ()=> {setIsRecording(false); stopRecording()}} onPress={()=> snap(timer)}>
+                          <Canvas style={{ width: item == currentViewableMedia?.item? 80 : 70, height: item == currentViewableMedia?.item? 80 : 70}}>
+                                                      <Group clip={Skia.RRectXY(Skia.XYWHRect(0, 0, item == currentViewableMedia?.item? 80 : 70, item == currentViewableMedia?.item? 80 : 70), item == currentViewableMedia?.item? 80: 10, item == currentViewableMedia?.item? 80 : 10)}>
+                                                            <SkiaImage image={skiaImage} fit={"cover"} x={0} y={0} width={item == currentViewableMedia?.item? 80 : 70} height={item == currentViewableMedia?.item? 80 : 70}>
+                                                              <ColorMatrix matrix={index == 0? whiteMatrix : item.matrice} />
+                                                            </SkiaImage>
+                                                          </Group>
+                                                        </Canvas>
+                          </Pressable>
+                            
+                        </View>
+                  )
+                })}/>
+
+                            </View>
+          
          </View>
         </View>
+       </GestureDetector>
+    </View>
       }
       <Modal visible={showModal} onRequestClose={()=> setShowModal(false)} transparent={true} presentationStyle='overFullScreen' animationType='slide'>
         <View style={{flex: 1, backgroundColor:'rgba(0,0,0,0.5)', justifyContent:'center', alignItems:'center'}}>

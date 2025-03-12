@@ -1,14 +1,12 @@
-import { View, Text, Alert, Image, useWindowDimensions, FlatList, Pressable, PermissionsAndroid, NativeSyntheticEvent} from 'react-native'
+import { View, Text, Alert, Image, useWindowDimensions, FlatList, Pressable, Platform, StatusBar} from 'react-native'
 import React, { useEffect, useRef, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AntDesign, Ionicons, FontAwesome5 } from '@expo/vector-icons'
 import * as MediaLibrary from 'expo-media-library';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import Video from 'react-native-video';
 import ImageZoom, {ImageZoomProps} from 'react-native-image-pan-zoom';
-import FastImage from 'react-native-fast-image';
-import RNFS from 'react-native-fs';
 
 export default function Gallery(){
   const [permission, setPermission] = useState<string | null>(null);
@@ -123,10 +121,9 @@ export default function Gallery(){
         numColumns={4} data={assets} renderItem={({item, index})=>{
         return(
           <Pressable onLongPress={()=> enableMultipleSelection(item)} onPress={()=> { assetsScrollToIndex(index); scrollToTop(); processMultipleImages(item)}} style={{borderWidth: 1, borderColor:'rgba(0,0,0,0.3)'}}>
-            <FastImage
+            <Image
                 source={{ uri: item.uri }}
                 style={{ width: width/4, height: 85 }}
-                resizeMode={FastImage.resizeMode.cover}
               />
                 {  item == mainImg && <View style={{zIndex: 1, backgroundColor: 'rgba(255,255,255, 0.5)', width: width/4, height: 100, position:'absolute' }}></View>}
                 { showMultiplePicker && <View style={{ zIndex: 2, position:'absolute', top: 2, left: width/4 - 30, width: 25, height: 25, borderRadius: 25, borderColor: 'white', borderWidth: 2, justifyContent:'center', alignItems:'center', backgroundColor: selectedImages.includes(item)? 'blue' : 'rgba(255,255,255,0.4)' }}>
@@ -186,11 +183,6 @@ export default function Gallery(){
     }
     
   }
-
-    
-
-      console.log('Total media fetched:', allAssets.length);
-
       setAssets((prevData) => {
             const filteredItems = allAssets.filter(item => !prevData.some(prev => prev.id == item.id));
             return [...prevData, ...filteredItems];
@@ -300,15 +292,14 @@ const enableMultipleSelection = (media: Assets)=>{
    }
 
    const goToEditScreen = ()=>{
-    if(mainImg){
+      const selectImgs = selectedImages.length >= 1 ? selectedImages : mainImg ? [...selectedImages, mainImg] : selectedImages;
       router.push({
         pathname: '/(nestedScreens)/PostPreview',
-        params: {media: JSON.stringify(selectedImages), singleMedia: JSON.stringify(mainImg), imgResizeMode: imgResizeMode.toString()}})
-    }
+        params: {media: JSON.stringify(selectImgs), imgResizeMode: imgResizeMode.toString(), galleryMedia: JSON.stringify(assets[0])}})
+   
    }
 
    const scrollToTop = () => {
-    console.log('Scroll To Top')
     outerFlatlistRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
@@ -367,14 +358,14 @@ const enableMultipleSelection = (media: Assets)=>{
 
   return (
     <SafeAreaView style={{flex: 1, backgroundColor:'rgba(0,0,0,0.9)'}}>
-        <StatusBar style='light' backgroundColor='black' />
-        <View>
-           <FlatList ref={flatlistRef} contentContainerStyle={{paddingRight: 150}} style={{ position:'absolute', zIndex: 10, left: cameraModeIndex == 0? 60/100 * width : cameraModeIndex == 1? 55/100 * width : 50/100 * width , top: 90/100 * height, backgroundColor: 'rgba(0,0,0,0.9)', padding: 15, borderRadius: 20, width: 50/100 * width}} data={switchScreens} renderItem={({item, index})=> {
+        <ExpoStatusBar style='light' backgroundColor='black' />
+       
+           <FlatList ref={flatlistRef} contentContainerStyle={{paddingRight: 150}} style={{ position:'absolute', zIndex: 10, left: cameraModeIndex == 0? 60/100 * width : cameraModeIndex == 1? 55/100 * width : 50/100 * width , top: 95/100 * height, backgroundColor: 'rgba(0,0,0,0.9)', padding: 15, borderRadius: 20, width: 50/100 * width}} data={switchScreens} renderItem={({item, index})=> {
             return(
                 <Text onPress={()=> processCapture(index)} style={{ fontWeight: '800', color: index == cameraModeIndex? 'white' : 'rgba(255,255,255, 0.3)', fontSize: 16, marginRight: 15}}>{item}</Text>
             )
             }} horizontal showsHorizontalScrollIndicator={false}/>
-        </View>
+       
       <View style={{flex: 1}}>
           <View style={{flexDirection:'row', alignItems:'center', padding: 15, backgroundColor:'rgba(0,0,0,0.9)'}}>
               <AntDesign onPress={()=> router.push('/(home)/explore')} name="close" size={30} color="white" style={{marginRight: 20}}/>

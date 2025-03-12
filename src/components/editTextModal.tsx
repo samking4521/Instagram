@@ -69,12 +69,7 @@ const EditTextModal = ({exitEditScreen,
              // Callback function to handle viewable items change
                const onViewableItemsChanged = useCallback(({ viewableItems, changed } : {viewableItems: ViewToken[], changed: ViewToken[]}) => {
                  if(selectorState == 'font'){
-                   console.log('Visible items:', viewableItems);
-                   console.log('Changed items in this iteration:', changed);
                    setCurrentItem(viewableItems[0])
-                 }else{
-                   console.log('Visible items:', viewableItems);
-                   console.log('Changed items in this iteration:', changed);
                  }
                }, []);
            
@@ -153,14 +148,9 @@ const EditTextModal = ({exitEditScreen,
        min={14}
        max={40}
        onChange={(value: number) => {
-         console.log("CHANGE", value);
          updateFontSize(value)
-        
        }}
-       onComplete={(value: number) => {
-         console.log("COMPLETE", value);
-        
-       }}
+      
        width={5}
        height={35/100 * height}
        step={1}

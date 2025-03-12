@@ -1,17 +1,34 @@
-import { View, Text, Pressable, Button, Image} from 'react-native'
-import { useCameraPermission, useCameraDevice, Camera } from 'react-native-vision-camera';
+import { View, Text, Pressable, Alert, Image, Modal, StatusBar, useWindowDimensions} from 'react-native'
+import { useCameraPermission, useCameraDevice, Camera, useMicrophonePermission, useCameraFormat, CameraProps} from 'react-native-vision-camera';
 import { AntDesign, MaterialCommunityIcons, Ionicons} from '@expo/vector-icons'
 import { router } from 'expo-router';
 import { useState, useRef, useEffect } from 'react';
+import Reanimated, { useAnimatedProps, useSharedValue, interpolate, Extrapolation } from 'react-native-reanimated'
+import { Gesture, GestureDetector } from 'react-native-gesture-handler'
+
+Reanimated.addWhitelistedNativeProps({
+  zoom: true,
+})
+const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera)
 
 export default function ReelsCapture({ isFront }: { isFront: boolean }){
+   const { width, height } = useWindowDimensions()
     const cameraRef = useRef<Camera>(null);
     const { hasPermission, requestPermission } = useCameraPermission();
+    const { hasPermission: audioPermission, requestPermission: requestAudioPermission } = useMicrophonePermission();
     const device = useCameraDevice(isFront? 'front' : 'back');
+      const format = useCameraFormat(device, [
+        { fps: 240 }
+      ])
+      const minFps = format ? Math.max(format.minFps, 20) : 20;
+      const maxFps = format ? Math.min(format.maxFps, 30) : 30;
+      const [showDeviceModal, setShowDeviceModal] = useState(false)
     const [flash, setFlash] = useState(false)
     const [image, setImage] = useState<string | null>(null)
     const [isRecording, setIsRecording] = useState(false);
     const [seconds, setSeconds] = useState(0);
+     const zoom = useSharedValue(device?.neutralZoom)
+        const zoomOffset = useSharedValue(0);
 
 
   useEffect(() => {
@@ -36,25 +53,41 @@ export default function ReelsCapture({ isFront }: { isFront: boolean }){
     return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
 
+  const showDeviceModalAlert = ()=>{
+      Alert.alert(
+        "No Camera",
+        "This device has no camera available",
+        [
+          { text: "Cancel", onPress: ()=> router.back()},
+          { text: "OK", onPress: ()=> console.log('Pressed Ok') }
+        ]
+      );
+    }
+  
 
+  useEffect(()=>{
+    if(device == null){
+       showDeviceModalAlert()
+       setShowDeviceModal(true)
+    }
+  }, [device])
 
-    if (!hasPermission) {
-        return (
-          <View>
-            <Text>No permission. Please grant camera access.</Text>
-            <Button title="Grant Permission" onPress={requestPermission} />
-          </View>
-        );
-      }
-    
-      if (device == null) return <Text>No camera device found</Text>;
+  useEffect(()=>{
+    if(!hasPermission){
+       requestPermission()
+    }else{
+     if(!audioPermission){
+       requestAudioPermission()
+     }
+    }
+ }, [hasPermission])
+   
 
       const TakePicture = async () => {
         try{
             console.log('image captured')
             if (cameraRef.current) {
                 const photo = await cameraRef.current.takePhoto();
-                console.log(photo.path); // Path to the captured image
               }
         }catch(e){
             console.log('Error : ', e)
@@ -70,7 +103,7 @@ export default function ReelsCapture({ isFront }: { isFront: boolean }){
             const video = await cameraRef.current.startRecording({
               flash: flash? 'on' : 'off' ,
               onRecordingFinished: (video) => {
-                console.log('Video saved:', video);
+                console.log('Video saved');
               },
               onRecordingError: (error) => {
                 console.error('Recording error:', error);
@@ -89,23 +122,60 @@ export default function ReelsCapture({ isFront }: { isFront: boolean }){
         }
       };
     
+       const gesture = Gesture.Pinch()
+                  .onBegin(() => {
+                    zoomOffset.value = zoom.value ?? 1
+                  })
+                  .onUpdate(event => {
+                    const z = zoomOffset.value * event.scale
+                    if (device) {
+                      zoom.value = interpolate(
+                        z,
+                        [1, 10],
+                        [device.minZoom, device.maxZoom],
+                        Extrapolation.CLAMP,
+                      );
+                    }
+                  })
+              
+                const animatedProps = useAnimatedProps<CameraProps>(
+                  () => ({ zoom: zoom.value }),
+                  [zoom]
+                )
+      
+                if(device == null){
+                  return(
+                    <Modal visible={showDeviceModal} onRequestClose={()=> setShowDeviceModal(false)} animationType='fade' presentationStyle='overFullScreen' transparent={true}>
+                            <View style={{flex: 1, backgroundColor:'rgba(0,0,0,0.5)'}}>       
+                             </View>
+                    </Modal>
+                  )   
+                }
+          
 
     return(
         <View style={{flex: 1}}>
          {  image? <View style={{flex: 1, justifyContent:'center', alignItems:'center'}}>
-                    <Image source={{ uri : image}} resizeMode='contain' style={{width: 400, height: 400}}/>
+                    <Image source={{ uri : image}} resizeMode='cover' style={{width: width, height: height}}/>
                 </View> : 
-            <View style={{flex: 1}}>
-            <Camera
-            torch={flash? 'on' : 'off'}
-            photo={true}
-            ref={cameraRef}
-            style={{flex: 1}}
-            device={device}
-            isActive={true}
-            video={true}
-          />
-            <View style={{position: 'absolute', width: '100%', height: '100%'}}>
+            <View style={{flex: 1, zIndex: 1}}>
+                 <GestureDetector gesture={gesture}>
+                   <View style={{flex: 1}}>
+               <ReanimatedCamera
+                  lowLightBoost={true}
+                  exposure={0.5}
+                  torch={flash? 'on' : 'off'}
+                  photo={true}
+                  format={format}
+                  fps={[minFps, maxFps]}
+                  ref={cameraRef}
+                  style={{flex: 1}}
+                  device={device}
+                  isActive={true}
+                  video={true}
+                  animatedProps={animatedProps}
+                />
+            <View style={{position: 'absolute', width: '100%', height: '100%', paddingTop: StatusBar.currentHeight}}>
               <View style={{ paddingHorizontal: 30, paddingTop: 15, flexDirection:'row', justifyContent:'space-between'}}>
                 <AntDesign onPress={()=> router.push('/(home)/post')} name="close" size={30} color="white" />
                 <MaterialCommunityIcons onPress={()=> setFlash(!flash)} name={flash? 'flash': "flash-off"} size={30} color="white" />
@@ -117,18 +187,18 @@ export default function ReelsCapture({ isFront }: { isFront: boolean }){
 
               <View style={{top:'40%', marginLeft: 10}}>
                      <View style={{flexDirection:'row', alignItems:'center', marginBottom: 10}}>
-                     <Ionicons name="musical-notes-outline" size={35} color="white" style={{width: 40, height: 40, marginRight: 10}} />
-                     <Text style={{color:'white', fontWeight:'500', letterSpacing: 0.3}}>Music</Text>
+                     <Ionicons name="musical-notes-outline" size={30} color="white" style={{width: 35, height: 35, marginRight: 10}} />
+                     <Text style={{color:'white', fontWeight:'500', letterSpacing: 0.3, fontSize: 13}}>Music</Text>
                       </View>
 
                       <View style={{flexDirection:'row', alignItems:'center', marginBottom: 10}}>
-                          <Ionicons name="timer-outline" size={35} color="white"  style={{width: 40, height: 40, marginRight: 10}}/>
-                          <Text style={{color:'white', fontWeight:'500', letterSpacing: 0.3}}>Timer</Text>
+                          <Ionicons name="timer-outline" size={30} color="white"  style={{width: 35, height: 35, marginRight: 10}}/>
+                          <Text style={{color:'white', fontWeight:'500', letterSpacing: 0.3, fontSize: 13}}>Timer</Text>
                         </View>
 
                         <View style={{flexDirection:'row', alignItems:'center'}}>
-                        <MaterialCommunityIcons name="view-gallery-outline" size={30} color="white" style={{width: 40, height: 40, marginRight: 10}}/>
-                          <Text style={{color:'white', fontWeight:'500', letterSpacing: 0.3}}>Gallery</Text>
+                        <MaterialCommunityIcons name="view-gallery-outline" size={25} color="white" style={{width: 35, height: 35, marginRight: 10}}/>
+                          <Text style={{color:'white', fontWeight:'500', letterSpacing: 0.3, fontSize: 13}}>Gallery</Text>
                         </View>
                 </View>
            <Pressable onLongPress={()=> {setIsRecording(true); startRecording()}} onPressOut={()=> {setIsRecording(false); stopRecording();}} onPress={TakePicture} style={{ top: 20, zIndex: 1, alignSelf: 'center', marginTop:'auto', width: 90, height: 90, borderRadius: 90, backgroundColor:isRecording? 'green' : 'white', padding: 5}}>
@@ -136,6 +206,8 @@ export default function ReelsCapture({ isFront }: { isFront: boolean }){
               </View>
            </Pressable>
          </View>
+         </View>
+         </GestureDetector>
         </View>
       }
     </View>
