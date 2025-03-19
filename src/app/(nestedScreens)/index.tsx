@@ -6,6 +6,7 @@ import * as MediaLibrary from 'expo-media-library';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import Video from 'react-native-video';
+import { FlatList as GestureFlatlist } from 'react-native-gesture-handler';
 import ImageZoom, {ImageZoomProps} from 'react-native-image-pan-zoom';
 
 export default function Gallery(){
@@ -22,7 +23,7 @@ export default function Gallery(){
   const { width, height } = useWindowDimensions()
   const [cameraModeIndex, setCameraModeIndex] = useState(0)
   const flatlistRef = useRef<FlatList>(null)
-  const assetsFlatListRef = useRef<FlatList>(null)
+  const assetsFlatListRef = useRef<GestureFlatlist>(null)
   const outerFlatlistRef = useRef<FlatList>(null)
 
   useEffect(() => {
@@ -37,112 +38,6 @@ export default function Gallery(){
     }
   };
 
-  const MediaComponent = ()=>{
-    return(
-      <Pressable onPress={controlPlayPause}>
-      {
-        mainImg? mainImg.mediaType == 'photo'? 
-        <ImageZoom {...({
-         cropWidth: width,
-         cropHeight: 50/100 * height,
-         imageWidth: width,
-         imageHeight: 50/100 * height,
-         minScale: 1,
-         enableCenterFocus: false,
-       } as ImageZoomProps)}>
-                   <Image source={{uri: mainImg.uri}} resizeMode={imgResizeMode? 'contain' : 'cover'}  style={{width: '100%', height: 50/100 * height}}/>                    
-         </ImageZoom>
-         :
-        <Video 
-        source={{ uri: mainImg.uri }} 
-        style={{width: width, height: 50/100 * height}}
-        controls={false}
-        paused={paused}
-        resizeMode="contain"
-        repeat
-      />
-       : <View style={{width: '100%', height: 50/100 * height, backgroundColor:'rgba(0,0,0,0.8)'}}></View>
-      }
-      { (mainImg?.mediaType == 'photo' && selectedImages.length == 0 ) && <Pressable onPress={()=> setImgResizeMode(!imgResizeMode)} style={{ position:'absolute', top: 44/100 * height, left: 10, backgroundColor:'#4C4C4C', width: 40, height: 40, borderRadius: 40, justifyContent:'center', alignItems:'center'}}>
-           <Ionicons name="chevron-expand" size={24} color="white" />
-       </Pressable>}
-
-       {
-         paused && mainImg?.mediaType == 'video' && <FontAwesome5 name="play" size={40} color="white" style={{position:'absolute', left: '45%', top: 40/100 * (50/100 * height)}}/>
-       }
-
-   </Pressable>
-   
-    )
-  }
-
-  const SelectMultipleMediaComponent = ()=>{
-     return(
-      <View style={{padding: 10, backgroundColor:'rgba(0,0,0,0.9)', flexDirection:'row', alignItems:'center'}}>
-      <View style={{flexDirection:'row', alignItems:'center', marginRight:"auto"}}>
-        <Text style={{color: 'white', fontSize: 18, fontWeight: '600', marginRight: 10}}>Recents</Text>
-        <AntDesign name="down" size={20} color="white" />
-      </View>
-      <View style={{flexDirection:'row', alignItems:'center'}}>
-         <Pressable onPress={enableMultipleImgSelection} style={{width: 35, height: 35, borderRadius: 35, backgroundColor: selectorIconColor? 'white' : '#4C4C4C', justifyContent:'center', alignItems:'center'}}>
-            <Ionicons name="copy" size={20} color={selectorIconColor? 'blue' : 'white'} />
-         </Pressable>
-        <Pressable onPress={()=> router.push({ pathname:'/(nestedScreens)/LiveCamera',
-          params: {uri: assets[0].uri}
-        })} style={{marginLeft: 10, width: 35, height: 35, borderRadius: 35, backgroundColor: '#4C4C4C', justifyContent:'center', alignItems:'center'}}>
-            <Ionicons name="camera-outline" size={20} color="white" />
-        </Pressable>
-      </View>
-    </View>
-     )
-  }
-
-  const MediaFlatList = ()=>{
-    return(
-      <FlatList onEndReached={getRecentMedia}
-        
-      onEndReachedThreshold={0.5}
-      ref={assetsFlatListRef}
-      scrollEnabled={true}
-      nestedScrollEnabled={true}
-       initialScrollIndex={0} 
-      keyExtractor={(item, index) => item.id.toString()}  
-       onScrollToIndexFailed={(info) => {
-    console.warn("Scroll to index failed", info);
-    assetsFlatListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
-  }}
-
-      getItemLayout={(data, index) => ({
-        length: 85,
-        offset: 85 * index,
-        index: index,
-      })}
-    
-        numColumns={4} data={assets} renderItem={({item, index})=>{
-        return(
-          <Pressable onLongPress={()=> enableMultipleSelection(item)} onPress={()=> { assetsScrollToIndex(index); scrollToTop(); processMultipleImages(item)}} style={{borderWidth: 1, borderColor:'rgba(0,0,0,0.3)'}}>
-            <Image
-                source={{ uri: item.uri }}
-                style={{ width: width/4, height: 85 }}
-              />
-                {  item == mainImg && <View style={{zIndex: 1, backgroundColor: 'rgba(255,255,255, 0.5)', width: width/4, height: 100, position:'absolute' }}></View>}
-                { showMultiplePicker && <View style={{ zIndex: 2, position:'absolute', top: 2, left: width/4 - 30, width: 25, height: 25, borderRadius: 25, borderColor: 'white', borderWidth: 2, justifyContent:'center', alignItems:'center', backgroundColor: selectedImages.includes(item)? 'blue' : 'rgba(255,255,255,0.4)' }}>
-                { selectedImages.includes(item) && <Text style={{color:'white', fontWeight:'600', fontSize: 14}}>{selectedImages.indexOf(item) + 1}</Text>}
-
-           </View>}
-           { item.mediaType == 'video' && <Text style={{fontWeight:'600', fontSize: 12, color:'white', letterSpacing: 0.5, zIndex: 3, position:'absolute', top: '85%', left: 65/100 * (width/4)}}>{item.duration? formatDuration(item.duration) : 0}</Text>}
-
-          </Pressable>      
-        )
-    }}/>
-
-    )
-  }
-
-  const listViews = [
-     <MediaComponent/>,
-     <SelectMultipleMediaComponent/>
-  ]
 
   const switchScreens = [
      'POST',
@@ -367,23 +262,93 @@ const enableMultipleSelection = (media: Assets)=>{
             }} horizontal showsHorizontalScrollIndicator={false}/>
        
       <View style={{flex: 1}}>
-          <View style={{flexDirection:'row', alignItems:'center', padding: 15, backgroundColor:'rgba(0,0,0,0.9)'}}>
+      <View style={{flexDirection:'row', alignItems:'center', padding: 15, backgroundColor:'rgba(0,0,0,0.9)'}}>
               <AntDesign onPress={()=> router.push('/(home)/explore')} name="close" size={30} color="white" style={{marginRight: 20}}/>
               <Text style={{marginRight:'auto', color:'white', fontSize: 20, fontWeight:'800'}}>New Post</Text>
               <Text onPress={goToEditScreen} style={{color: 'blue', fontSize: 16, fontWeight: '600'}}>Next</Text>
           </View>
          
+      <Pressable onPress={controlPlayPause}>
+      {
+        mainImg? mainImg.mediaType == 'photo'? 
+        <ImageZoom {...({
+         cropWidth: width,
+         cropHeight: 50/100 * height,
+         imageWidth: width,
+         imageHeight: 50/100 * height,
+         minScale: 1,
+         enableCenterFocus: false,
+       } as ImageZoomProps)}>
+                   <Image source={{uri: mainImg.uri}} resizeMode={imgResizeMode? 'contain' : 'cover'}  style={{width: '100%', height: 50/100 * height}}/>                    
+         </ImageZoom>
+         :
+        <Video 
+        source={{ uri: mainImg.uri }} 
+        style={{width: width, height: 50/100 * height}}
+        controls={false}
+        paused={paused}
+        resizeMode="contain"
+        repeat
+      />
+       : <View style={{width: '100%', height: 50/100 * height, backgroundColor:'rgba(0,0,0,0.8)'}}></View>
+      }
+      { (mainImg?.mediaType == 'photo' && selectedImages.length == 0 ) && <Pressable onPress={()=> setImgResizeMode(!imgResizeMode)} style={{ position:'absolute', top: 44/100 * height, left: 10, backgroundColor:'#4C4C4C', width: 40, height: 40, borderRadius: 40, justifyContent:'center', alignItems:'center'}}>
+           <Ionicons name="chevron-expand" size={24} color="white" />
+       </Pressable>}
+
+       {
+         paused && mainImg?.mediaType == 'video' && <FontAwesome5 name="play" size={40} color="white" style={{position:'absolute', left: '45%', top: 40/100 * (50/100 * height)}}/>
+       }
+
+   </Pressable>
+   
+          
           <View style={{flex: 1}}> 
-            <FlatList
-            ref={outerFlatlistRef}
-            ListFooterComponent={()=> <MediaFlatList/>}
-                stickyHeaderIndices={[1]}
-                data={listViews} renderItem={({item})=>{
-                    return(
-                        item
-                    )
-                }}
-            />
+          <View style={{padding: 10, backgroundColor:'rgba(0,0,0,0.9)', flexDirection:'row', alignItems:'center'}}>
+      <View style={{flexDirection:'row', alignItems:'center', marginRight:"auto"}}>
+        <Text style={{color: 'white', fontSize: 18, fontWeight: '600', marginRight: 10}}>Recents</Text>
+        <AntDesign name="down" size={20} color="white" />
+      </View>
+      <View style={{flexDirection:'row', alignItems:'center'}}>
+         <Pressable onPress={enableMultipleImgSelection} style={{width: 35, height: 35, borderRadius: 35, backgroundColor: selectorIconColor? 'white' : '#4C4C4C', justifyContent:'center', alignItems:'center'}}>
+            <Ionicons name="copy" size={20} color={selectorIconColor? 'blue' : 'white'} />
+         </Pressable>
+        <Pressable onPress={()=> router.push({ pathname:'/(nestedScreens)/LiveCamera',
+          params: {uri: assets[0].uri}
+        })} style={{marginLeft: 10, width: 35, height: 35, borderRadius: 35, backgroundColor: '#4C4C4C', justifyContent:'center', alignItems:'center'}}>
+            <Ionicons name="camera-outline" size={20} color="white" />
+        </Pressable>
+      </View>
+    </View>
+          <FlatList onEndReached={getRecentMedia}
+        
+        onEndReachedThreshold={0.2}
+        ref={assetsFlatListRef}
+        keyExtractor={(item, index) => item.id.toString()}  
+        getItemLayout={(data, index) => ({
+          length: 85,
+          offset: 85 * index,
+          index: index,
+        })}
+      
+          numColumns={4} data={assets} renderItem={({item, index})=>{
+          return(
+            <Pressable onLongPress={()=> enableMultipleSelection(item)} onPress={()=> { assetsScrollToIndex(index); scrollToTop(); processMultipleImages(item)}} style={{borderWidth: 1, borderColor:'rgba(0,0,0,0.3)'}}>
+              <Image
+                  source={{ uri: item.uri }}
+                  style={{ width: width/4, height: 85 }}
+                />
+                  {  item == mainImg && <View style={{zIndex: 1, backgroundColor: 'rgba(255,255,255, 0.5)', width: width/4, height: 100, position:'absolute' }}></View>}
+                  { showMultiplePicker && <View style={{ zIndex: 2, position:'absolute', top: 2, left: width/4 - 30, width: 25, height: 25, borderRadius: 25, borderColor: 'white', borderWidth: 2, justifyContent:'center', alignItems:'center', backgroundColor: selectedImages.includes(item)? 'blue' : 'rgba(255,255,255,0.4)' }}>
+                  { selectedImages.includes(item) && <Text style={{color:'white', fontWeight:'600', fontSize: 14}}>{selectedImages.indexOf(item) + 1}</Text>}
+  
+             </View>}
+             { item.mediaType == 'video' && <Text style={{fontWeight:'600', fontSize: 12, color:'white', letterSpacing: 0.5, zIndex: 3, position:'absolute', top: '85%', left: 65/100 * (width/4)}}>{item.duration? formatDuration(item.duration) : 0}</Text>}
+  
+            </Pressable>      
+          )
+      }}/>
+  
                    </View>
       </View>
     </SafeAreaView>

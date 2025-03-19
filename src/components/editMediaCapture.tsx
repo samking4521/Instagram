@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, Modal, StyleSheet, useWindowDimensions, Pressable, Image, ViewToken} from 'react-native'
+import { View, Text, Modal, StyleSheet, useWindowDimensions, Pressable, Image, ViewToken, AppState} from 'react-native'
 import { Ionicons, MaterialCommunityIcons, AntDesign, FontAwesome, FontAwesome6, Octicons } from '@expo/vector-icons'
 import Video from 'react-native-video';
 import * as MediaLibrary from 'expo-media-library';
@@ -7,7 +7,7 @@ import EditTextModal from './editTextModal';
 import { Canvas, Image as SkiaImage, Group, Skia, useImage, ColorMatrix, makeImageFromView, SkImage } from "@shopify/react-native-skia";
 import ImageFilters from '../../assets/colorMatrices.json'
 import Draggable from 'react-native-draggable';
-import BottomSheet, {BottomSheetScrollView, BottomSheetView} from '@gorhom/bottom-sheet';
+import BottomSheet, {BottomSheetView} from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView, FlatList, ScrollView } from 'react-native-gesture-handler';
 import { Stickers } from '../../assets/stickers'
 
@@ -16,7 +16,7 @@ type VideoType = {
     path: string
 }
 
-export default function EditMediaCapture ({mode, editCaptureModal, setEditCaptureModal, video, photo, setVideo, setImage, currentViewableMedia} : {mode: string, editCaptureModal: boolean, setEditCaptureModal: React.Dispatch<React.SetStateAction<boolean>>, video: VideoType | null, photo: string | null, setVideo: React.Dispatch<React.SetStateAction<VideoType | null>>, setImage: React.Dispatch<React.SetStateAction<string | null>>, currentViewableMedia: ViewToken } ){
+export default function EditMediaCapture ({mode, editCaptureModal, setEditCaptureModal, video, photo, setVideo, setImage, filterMatrice} : {mode: string, editCaptureModal: boolean, setEditCaptureModal: React.Dispatch<React.SetStateAction<boolean>>, video: VideoType | null, photo: string | null, setVideo: React.Dispatch<React.SetStateAction<VideoType | null>>, setImage: React.Dispatch<React.SetStateAction<string | null>>, filterMatrice: number[] } ){
     const { width, height } = useWindowDimensions()
     const [muteVideo, setMuteVideo] = useState(false)
     const [videoPaused, setVideoPaused] = useState(false)
@@ -37,7 +37,8 @@ export default function EditMediaCapture ({mode, editCaptureModal, setEditCaptur
      const [overlayText, setOverlayText] = useState('')
      const [currentItem, setCurrentItem] = useState<ViewToken>({} as ViewToken)
 const [openGalleryModal, setOpenGalleryModal] = useState(false)
-
+ const [appState, setAppState] = useState(AppState.currentState);
+ 
      type TextEdit = {
         fontSize?: number,
         textBackgroundColor?: string, 
@@ -49,6 +50,16 @@ const [openGalleryModal, setOpenGalleryModal] = useState(false)
         uri?: any
        }
   
+        useEffect(() => {
+             const subscription = AppState.addEventListener("change", (nextAppState) => {
+               setAppState(nextAppState);
+             });
+         
+             return () => {
+               subscription.remove();
+             };
+           }, [appState]);
+       
 
     useEffect(()=>{
         if(!displayPaused) return
@@ -153,7 +164,7 @@ const [openGalleryModal, setOpenGalleryModal] = useState(false)
                                                                <Canvas style={{ width: width, height: 85/100 * height }}>
                                                                   <Group clip={Skia.RRectXY(Skia.XYWHRect(0, 0, width, 85/100 * height), 20, 20)}>
                                                                     <SkiaImage image={skiaImage} fit={"cover"} x={0} y={0} width={width} height={85/100 * height}>
-                                                                      <ColorMatrix matrix={currentViewableMedia?.item.matrice}/>
+                                                                      <ColorMatrix matrix={filterMatrice}/>
                                                                     </SkiaImage>
                                                                    </Group>
                                                                    
@@ -240,9 +251,6 @@ const [openGalleryModal, setOpenGalleryModal] = useState(false)
                         <Pressable onPress={()=> setOpenGalleryModal(true)} style={{width: 40, height: 40, borderRadius: 40, justifyContent:'center', alignItems:'center', backgroundColor:'rgba(0,0,0,0.5)', marginHorizontal: 2}}>
                                 <Ionicons name="images-outline" size={22} color= {video? "rgba(255,255,255,0.6)" : "white"} />
                         </Pressable>
-                        <View style={{width: 40, height: 40, borderRadius: 40, justifyContent:'center', alignItems:'center', backgroundColor:'rgba(0,0,0,0.5)', marginHorizontal: 2}}>
-                                <Ionicons name="color-filter-outline" size={22} color= {video? "rgba(255,255,255,0.6)" : "white"}/>
-                        </View>
                         <Pressable onPress={()=> setShowSaveDeviceCont(!showSaveDeviceCont)} style={{width: 40, height: 40, borderRadius: 40, justifyContent:'center', alignItems:'center', backgroundColor:'rgba(0,0,0,0.5)'}}>
                                 <MaterialCommunityIcons name="dots-horizontal" size={22} color="white" />
                         </Pressable>
@@ -309,17 +317,7 @@ const [openGalleryModal, setOpenGalleryModal] = useState(false)
      >
     <BottomSheetView  style={{backgroundColor: 'rgba(0,0,0,0.8)'}}>
        <Text style={{fontSize: 16, fontWeight:'600', textAlign:'center', marginVertical: 15, color:'white'}}>Stickers</Text>
-       {/* <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{flexDirection:'row', flexWrap:'wrap'}}>
-           {
-             Stickers.map((item)=>{
-                return(
-                    <Pressable key={item.id} onPress={()=>{console.log('Tela'); loadResizeImage(item.uri)}}  style={{paddingVertical: 5, width: width/3, height: 80}}>
-                        <Image resizeMode='contain' source={item.uri} style={{width: '100%', height: '100%'}}/>
-                    </Pressable>
-                )
-             })
-           }
-       </ScrollView> */}
+       
        <FlatList
        numColumns={3}
          data={Stickers}

@@ -3,7 +3,7 @@ import { FontAwesome5} from '@expo/vector-icons'
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useState, useRef } from 'react';
 import PostCapture from '@/src/components/postCapture';
-import StoryCapture from '@/src/components/storyCapture';
+import StoryCapture from '@/src/components/StoryCapture/storyCapture';
 import ReelCapture from '@/src/components/reelCapture';
 
 export default function LiveCamera() {
@@ -64,7 +64,6 @@ export default function LiveCamera() {
           <Pressable onPress={()=> setIsFront(!isFront)} style={{marginLeft: 10}}>
              <FontAwesome5 name="sync-alt" size={24} color="white" />
           </Pressable>
-       
       </View>
     </SafeAreaView>
    

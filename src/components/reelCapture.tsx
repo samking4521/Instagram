@@ -1,14 +1,16 @@
 import { View, Text, Pressable, Alert, Image, Modal, StatusBar, useWindowDimensions} from 'react-native'
-import { useCameraPermission, useCameraDevice, Camera, useMicrophonePermission, useCameraFormat, CameraProps} from 'react-native-vision-camera';
+import { useCameraPermission, useCameraDevice, Camera, useMicrophonePermission, useCameraFormat, CameraProps, useSkiaFrameProcessor} from 'react-native-vision-camera';
 import { AntDesign, MaterialCommunityIcons, Ionicons} from '@expo/vector-icons'
 import { router } from 'expo-router';
 import { useState, useRef, useEffect } from 'react';
 import Reanimated, { useAnimatedProps, useSharedValue, interpolate, Extrapolation } from 'react-native-reanimated'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
+import { Skia } from '@shopify/react-native-skia';
 
 Reanimated.addWhitelistedNativeProps({
   zoom: true,
 })
+
 const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera)
 
 export default function ReelsCapture({ isFront }: { isFront: boolean }){
@@ -30,6 +32,26 @@ export default function ReelsCapture({ isFront }: { isFront: boolean }){
      const zoom = useSharedValue(device?.neutralZoom)
         const zoomOffset = useSharedValue(0);
 
+        const normalMatrix = [
+            1, 0, 0, 0, 0,  
+            0, 1, 0, 0, 0,  
+            0, 0, 1, 0, 0, 
+            0, 0, 0, 1, 0
+          ]
+            
+               
+                const colorFilter = Skia.ColorFilter.MakeMatrix(normalMatrix );
+                const paint = Skia.Paint();
+                paint.setColorFilter(colorFilter);
+              
+                const frameProcessor = useSkiaFrameProcessor((frame) => {
+                  "worklet";
+                  frame.render(paint);
+                }, [paint]);
+                  
+                
+            
+            
 
   useEffect(() => {
     let interval: number | null = null;
@@ -161,20 +183,24 @@ export default function ReelsCapture({ isFront }: { isFront: boolean }){
             <View style={{flex: 1, zIndex: 1}}>
                  <GestureDetector gesture={gesture}>
                    <View style={{flex: 1}}>
-               <ReanimatedCamera
-                  lowLightBoost={true}
-                  exposure={0.5}
-                  torch={flash? 'on' : 'off'}
-                  photo={true}
-                  format={format}
-                  fps={[minFps, maxFps]}
-                  ref={cameraRef}
-                  style={{flex: 1}}
-                  device={device}
-                  isActive={true}
-                  video={true}
-                  animatedProps={animatedProps}
-                />
+               {/* <ReanimatedCamera
+                   torch={flash? 'on' : 'off'}
+                   photo={true}
+                  
+                   ref={cameraRef}
+                   style={{flex: 1, scaleX: 1}}
+                   device={device}
+                   isActive={true}
+                  
+                   video={true}
+                   audio={true}
+                   
+                  photoQualityBalance="speed"
+                   animatedProps={animatedProps}
+                  
+                   androidPreviewViewType="texture-view"
+                   pixelFormat={'yuv'}
+                /> */}
             <View style={{position: 'absolute', width: '100%', height: '100%', paddingTop: StatusBar.currentHeight}}>
               <View style={{ paddingHorizontal: 30, paddingTop: 15, flexDirection:'row', justifyContent:'space-between'}}>
                 <AntDesign onPress={()=> router.push('/(home)/post')} name="close" size={30} color="white" />

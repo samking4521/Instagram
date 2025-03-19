@@ -1,4 +1,4 @@
-import { useCameraPermission, useCameraDevice, Camera, useMicrophonePermission, useCameraFormat, CameraProps } from 'react-native-vision-camera';
+import { useCameraPermission, useCameraDevice, Camera, useMicrophonePermission, useCameraFormat, CameraProps, useSkiaFrameProcessor } from 'react-native-vision-camera';
 import { View, Text, Button, Image, Pressable, useWindowDimensions, StyleSheet, LayoutChangeEvent, Alert, Modal, StatusBar } from 'react-native';
 import { AntDesign, MaterialCommunityIcons} from '@expo/vector-icons'
 import { router } from 'expo-router';
@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import Reanimated, { useAnimatedProps, useSharedValue, interpolate, Extrapolation } from 'react-native-reanimated'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import EditMediaCapture from './editMediaCapture';
+import { Skia } from '@shopify/react-native-skia';
 
 Reanimated.addWhitelistedNativeProps({
   zoom: true,
@@ -39,6 +40,27 @@ export default function PostCapture({ isFront, uri }: { isFront: boolean, uri: s
     duration: number,
     path: string
  }
+
+ const normalMatrix = [
+     1, 0, 0, 0, 0,  
+     0, 1, 0, 0, 0,  
+     0, 0, 1, 0, 0, 
+     0, 0, 0, 1, 0
+   ]
+     
+        
+         const colorFilter = Skia.ColorFilter.MakeMatrix(normalMatrix);
+         const paint = Skia.Paint();
+         paint.setColorFilter(colorFilter);
+       
+         const frameProcessor = useSkiaFrameProcessor((frame) => {
+           "worklet";
+           frame.render(paint);
+         }, [paint]);
+           
+         
+     
+     
 
   useEffect(() => {
     let interval: number | null = null;
@@ -196,28 +218,31 @@ useEffect(()=>{
   return (
     <View style={{flex: 1}}>
       {
-        editCaptureModal? <EditMediaCapture mode={'post'} video={video} setVideo={setVideo} setImage={setImage} editCaptureModal={editCaptureModal} setEditCaptureModal={setEditCaptureModal} photo={image}/> 
+        editCaptureModal? <EditMediaCapture mode={'post'} video={video} setVideo={setVideo} setImage={setImage} editCaptureModal={editCaptureModal} setEditCaptureModal={setEditCaptureModal} photo={image} filterMatrice={normalMatrix}/> 
                :
       <View style={{flex: 1, zIndex: 1}}>
          <GestureDetector gesture={gesture}>
         <View style={{flex: 1}}>
-                <ReanimatedCamera
-                  lowLightBoost={true}
-                  exposure={0}
+                {/* <ReanimatedCamera
                   torch={flash? 'on' : 'off'}
                   photo={true}
-                  format={format}
-                  fps={[minFps, maxFps]}
+                  exposure={1}
+                
                   ref={cameraRef}
-                  style={{flex: 1}}
+                  style={{flex: 1, scaleX: 1}}
                   device={device}
                   isActive={true}
+                  preview={true}
                   video={true}
                   audio={true}
-                  videoBitRate="high"
+                
                  photoQualityBalance="speed"
                   animatedProps={animatedProps}
-                />
+                  frameProcessor={frameProcessor}
+                 
+                  androidPreviewViewType="texture-view"
+                  pixelFormat={'yuv'}
+                /> */}
                 
         
        
