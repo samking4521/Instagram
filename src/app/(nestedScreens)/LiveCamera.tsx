@@ -1,10 +1,10 @@
 import { View, Text, Image, SafeAreaView, Pressable, FlatList } from 'react-native';
 import { FontAwesome5} from '@expo/vector-icons'
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState, useRef } from 'react';
 import PostCapture from '@/src/components/postCapture';
 import StoryCapture from '@/src/components/StoryCapture/storyCapture';
-import ReelCapture from '@/src/components/reelCapture';
+import ReelCapture from '@/src/components/ReelCapture/reelCapture'
 
 export default function LiveCamera() {
   const [isFront, setIsFront] = useState(false)

@@ -223,7 +223,7 @@ useEffect(()=>{
       <View style={{flex: 1, zIndex: 1}}>
          <GestureDetector gesture={gesture}>
         <View style={{flex: 1}}>
-                {/* <ReanimatedCamera
+                <ReanimatedCamera
                   torch={flash? 'on' : 'off'}
                   photo={true}
                   exposure={1}
@@ -242,9 +242,7 @@ useEffect(()=>{
                  
                   androidPreviewViewType="texture-view"
                   pixelFormat={'yuv'}
-                /> */}
-                
-        
+                /> 
        
             <View style={{position: 'absolute', width: '100%', height: '100%'}}>
               <View style={{ paddingHorizontal: 30, paddingTop: StatusBar.currentHeight, flexDirection:'row', justifyContent:'space-between'}}>

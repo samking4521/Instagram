@@ -1,10 +1,11 @@
-import { View, Text, SafeAreaView, Image, useWindowDimensions, FlatList, Pressable, Modal, ViewToken, StatusBar} from 'react-native'
+import { View, Text, SafeAreaView, Image, useWindowDimensions, FlatList, Pressable, Modal, ViewToken, StatusBar, TextInput} from 'react-native'
 import React, {  useCallback, useRef, useState, useEffect } from 'react'
 import { AntDesign, Ionicons, FontAwesome6, MaterialCommunityIcons, Octicons } from '@expo/vector-icons'
 import { useLocalSearchParams } from 'expo-router'
 import Video from 'react-native-video';
 import { router } from 'expo-router';
 import EditSingleMedia from '@/src/components/editSingleMedia';
+import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 
 export default function PostPreview(){
     const { width, height } = useWindowDimensions()
@@ -23,6 +24,7 @@ export default function PostPreview(){
     const [muteVideo, setMuteVideo] = useState(false)
    const [openGalleryModal, setOpenGalleryModal] = useState(false)
    const [imageFilterModal, setImageFilterModal] = useState<string | null>(null)
+   const [openMusicBottomSheet, setOpenMusicBottomSheet] = useState(false)
    const flatListRef = useRef<FlatList>(null)   
 
      // Define the viewability configuration
@@ -113,9 +115,9 @@ export default function PostPreview(){
 
         <View style={{marginTop:'auto', paddingHorizontal: 15, marginBottom: 10}}>
            <View style={{flexDirection:'row', alignItems:'center', justifyContent:'space-between'}}>
-               <View style={{width: 60, height: 40, borderRadius: 10, backgroundColor: 'rgba(192,192,192,0.3)', justifyContent:'center', alignItems:'center'}}>
+               <Pressable onPress={()=>{setOpenMusicBottomSheet(true)}} style={{width: 60, height: 40, borderRadius: 10, backgroundColor: 'rgba(192,192,192,0.3)', justifyContent:'center', alignItems:'center'}}>
                   <Ionicons name="musical-notes-outline" size={25} color="black" />
-               </View>
+               </Pressable>
                   { currentViewableMedia?.item.mediaType == 'photo'? <Pressable onPress={()=>{ setSelectedItem(currentViewableMedia.item); setShowEditModal(true); setAddOverlayText(true)}} style={{width: 60, height: 40, borderRadius: 10, backgroundColor: 'rgba(192,192,192,0.3)', justifyContent:'center', alignItems:'center'}}>
                   <Ionicons name="text" size={25} color="black" />
                </Pressable> : <View style={{width: 60, height: 40, borderRadius: 10, backgroundColor: 'rgba(192,192,192,0.3)', justifyContent:'center', alignItems:'center'}}>
@@ -183,6 +185,19 @@ export default function PostPreview(){
       setMediaFiles={setMediaFiles}
       setCurrentViewableMedia={setCurrentViewableMedia}
      />}
+
+     {
+      openMusicBottomSheet && 
+      <BottomSheet index={0} snapPoints={['92%']} enablePanDownToClose onClose={()=> setOpenMusicBottomSheet(false)} containerStyle={{backgroundColor:'rgba(0,0,0,0.3)'}}>
+         <BottomSheetView style={{flex: 1, backgroundColor:'white'}}>
+               <View style={{flexDirection:"row", alignItems:'center', paddingVertical: 10, paddingHorizontal: 20}}>
+                   {/* <Ionicons name="arrow-back" size={24} color="black" style={{marginRight: 20}} /> */}
+                   <AntDesign name="search1" size={20} color="black" style={{marginRight: 10}}/>
+                   <TextInput style={{ paddingLeft: 10, backgroundColor:'#FAFAFA', borderRadius: 10, height: 30, flex: 1}} placeholder='Search music'/>
+               </View>
+         </BottomSheetView>
+      </BottomSheet>
+     }
      
     </SafeAreaView>
   )

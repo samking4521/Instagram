@@ -5600,6 +5600,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@expo/config-plugins@npm:^9.0.17":
+  version: 9.0.17
+  resolution: "@expo/config-plugins@npm:9.0.17"
+  dependencies:
+    "@expo/config-types": ^52.0.5
+    "@expo/json-file": ~9.0.2
+    "@expo/plist": ^0.2.2
+    "@expo/sdk-runtime-versions": ^1.0.0
+    chalk: ^4.1.2
+    debug: ^4.3.5
+    getenv: ^1.0.0
+    glob: ^10.4.2
+    resolve-from: ^5.0.0
+    semver: ^7.5.4
+    slash: ^3.0.0
+    slugify: ^1.6.6
+    xcode: ^3.0.1
+    xml2js: 0.6.0
+  checksum: 5f415a3f4b399024d904d5c6e7b807d52f0efb6eddd217e458fa7d26d04b882f45462aa525ee8e49d404aecfc508e2a829ebd168f9a3b949a215a33699b0b92f
+  languageName: node
+  linkType: hard
+
 "@expo/config-plugins@npm:~9.0.15":
   version: 9.0.16
   resolution: "@expo/config-plugins@npm:9.0.16"
@@ -12071,23 +12093,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-camera@npm:^16.0.17":
-  version: 16.0.17
-  resolution: "expo-camera@npm:16.0.17"
-  dependencies:
-    invariant: ^2.2.4
-  peerDependencies:
-    expo: "*"
-    react: "*"
-    react-native: "*"
-    react-native-web: "*"
-  peerDependenciesMeta:
-    react-native-web:
-      optional: true
-  checksum: 8e2cc0c654189db9bc844175258d815b57b60e7536fb09bcf600778f27338d82466ecb829b0c5c21fda7f14eeb311243bff3f25131b72e7e5b67961fcc1f85bd
-  languageName: node
-  linkType: hard
-
 "expo-constants@npm:~17.0.4, expo-constants@npm:~17.0.5, expo-constants@npm:~17.0.7":
   version: 17.0.7
   resolution: "expo-constants@npm:17.0.7"
@@ -13569,6 +13574,7 @@ __metadata:
     "@aws-amplify/react-native": ^1.1.6
     "@aws-amplify/ui-react-native": ^2.3.1
     "@babel/core": ^7.26.9
+    "@expo/config-plugins": ^9.0.17
     "@expo/vector-icons": ^14.0.2
     "@gorhom/bottom-sheet": ^5.1.1
     "@react-native-async-storage/async-storage": ^2.1.1
@@ -13593,7 +13599,6 @@ __metadata:
     esbuild: ^0.24.2
     expo: ~52.0.36
     expo-blur: ~14.0.2
-    expo-camera: ^16.0.17
     expo-constants: ~17.0.4
     expo-font: ~13.0.3
     expo-haptics: ~14.0.1

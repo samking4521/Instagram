@@ -225,7 +225,7 @@ const [openGalleryModal, setOpenGalleryModal] = useState(false)
                     <View style={{flexDirection:'row', alignItems:'center', paddingHorizontal: 20, paddingBottom: 10}}>
                                     <View style={{flexDirection:'row', alignItems:'center', marginRight:'auto', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 30, paddingVertical: 15, borderRadius: 20}}>
                                            <FontAwesome name="user-circle-o" size={20} color="white" style={{marginRight: 5}} />
-                                            <Text style={{fontWeight:'600', color:'white', fontSize: 12}}>Your story</Text>
+                                            <Text style={{fontWeight:'600', color:'white', fontSize: 12}}>{mode == 'story'? 'Your story' : 'Your reel'}</Text>
                                     </View>
 
                                 <View style={{width: 45, height: 45, justifyContent:'center', alignItems:'center', borderRadius: 45, backgroundColor:'white'}}>
