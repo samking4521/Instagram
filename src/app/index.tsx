@@ -1,10 +1,8 @@
 import { View, Image, Modal, Text } from 'react-native'
 import { Redirect } from 'expo-router'
-import { signOut } from 'aws-amplify/auth'
 import { useEffect, useState } from 'react'
 import { useAppSelector } from '../redux/app/hooks'
 import { storage } from './(auth)/signIn'
-import { getCurrentUser } from 'aws-amplify/auth';
 import { useAppDispatch } from '../redux/app/hooks';
 import { userAuthSuccess, userAuthError } from '../redux/features/userAuthSlice';
 
@@ -20,11 +18,11 @@ const App = () => {
      
        const getAuthUser = async ()=>{
          try{
-           const { userId } = await getCurrentUser()
-           if(userId){
-              console.log('user Auth retrieved successfully : ', userId)
-              dispatch(userAuthSuccess(userId))
-           }
+          //  const { userId } = await getCurrentUser()
+          //  if(userId){
+          //     console.log('user Auth retrieved successfully : ', userId)
+          //     dispatch(userAuthSuccess(userId))
+          //  }
          }catch(e){
            console.log('Error getting auth user : ', e)
              dispatch(userAuthError())
