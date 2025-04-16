@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {View, Text, Pressable, Image, StyleSheet, ActivityIndicator, Modal, Alert} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AntDesign, Fontisto} from '@expo/vector-icons'
@@ -6,15 +6,52 @@ import BottomSheet, {BottomSheetView} from '@gorhom/bottom-sheet'
 import * as ImgPicker from 'expo-image-picker';
 import ImagePicker from 'react-native-image-crop-picker';
 import { router, useLocalSearchParams } from 'expo-router'
-import { uploadData } from 'aws-amplify/storage';
-
+import { supabase } from '@/src/Providers/supabaselib'
+import { useAppSelector } from '@/src/redux/app/hooks'
 
 export default function ProfilePicture(){
+    const userAuth = useAppSelector((state)=> state.auth.userAuth)
     const [openBottomSheet, setOpenBottomSheet] = useState(false)
     const [image, setImage] = useState<string | null>(null);
+    const [imageUrl, setImageUrl] = useState(false)
+    const [imgSelect, setImgSelect] = useState(false)
     const snapPoints = useMemo(()=> ['80%'], [])
     const { name, email, mobileNo, password } = useLocalSearchParams()
     const [loadingIndicator, setLoadingIndicator] = useState(false)
+
+    const checkIfImageExistsInDb = async()=>{
+      const { data } = await supabase
+      .from('User')
+      .select('key')
+      .eq('id', userAuth)
+      console.log('Key object : ', data)
+      if(data){
+         if(data[0].key){
+            return data[0].key
+         }
+      }
+    }
+
+    const getImageUrl = async(imgPath: string)=>{
+      const { data: {publicUrl} } = supabase
+      .storage
+      .from('insta-photos')
+      .getPublicUrl(imgPath)
+      if(publicUrl){
+          setImage(publicUrl)
+          setImageUrl(true)
+      }
+    }
+
+     useEffect(()=>{
+        (async()=>{
+            const imgPath = await checkIfImageExistsInDb()
+            if(imgPath){
+              getImageUrl(imgPath)
+            }
+        })()
+       
+     }, [])
 
 
     const showAlert = () => {
@@ -46,11 +83,14 @@ export default function ProfilePicture(){
         const result = await ImgPicker.launchCameraAsync({
           mediaTypes: 'images', // Allow photos and videos
           allowsEditing: true, // Allow user to edit the captured image
-          quality: 1, // Highest quality
+          quality: 1, // Highest quality,
+          aspect: [1, 1]
+          
         });
     
         if (!result.canceled) {
           setImage(result.assets[0].uri); // Store the captured image URI
+          setImgSelect(true)
         }
       };
     
@@ -59,7 +99,7 @@ export default function ProfilePicture(){
         let result = await ImgPicker.launchImageLibraryAsync({
           mediaTypes: ['images'],
           allowsEditing: true,
-          aspect: [4, 3],
+          aspect: [1, 1],
           quality: 1,
         });
     
@@ -67,6 +107,7 @@ export default function ProfilePicture(){
     
         if (!result.canceled) {
           setImage(result.assets[0].uri);
+          setImgSelect(true)
         }
       };
 
@@ -84,28 +125,91 @@ export default function ProfilePicture(){
         }
       }
 
-      const uploadImageToS3Bucket = async()=>{
+     
+      const uploadImageToImagesBucket = async(image: string)=>{
         try {
-          if(typeof image !== 'string'){
-              return
-          }
-          // Fetch the image and convert it to a blob
-        const getRealImg = await fetch(image);
-        const theBlob = await getRealImg.blob();
-        console.log('The Blob', theBlob);
-      // Upload the image blob to the storage
-          const result = await uploadData({
-            // path:  `media/userProfilePicture/a856aacc-e3fd-4dd7-9db0-96dc9721f420`,
-            path: ({identityId}) => `media/userProfilePicture/${identityId}/*`,
-            data: theBlob,
-          }).result;
-          console.log('Succeeded: ', result);
-          router.push({
-            pathname: '/(auth)/welcomeScreen',
-            params: {name, email, mobileNo, password}
-          })
-          setLoadingIndicator(false)
-        } catch (error) {
+               if(imageUrl && !imgSelect){
+                router.push({
+                  pathname: '/(auth)/welcomeScreen',
+                  params: {name, email, mobileNo, password}
+                })
+                return
+               }
+              const imgPath = await checkIfImageExistsInDb()
+              if(imgPath){
+                  await delImageInBucket(imgPath, true)
+                  const arraybuffer = await fetch(image).then((res) => res.arrayBuffer())
+                  const fileExt = image?.split('.').pop()?.toLowerCase() ?? 'jpeg'
+                  const uniqueVal = Date.now()
+                  const { data, error } = await supabase
+                  .storage
+                  .from('insta-photos')
+                  .upload(`Profile_Photos/${userAuth}/userPhoto_${uniqueVal}.${fileExt}`, arraybuffer, {
+                    cacheControl: '3600',
+                    upsert: false,
+                    contentType: 'image/*'
+                  })
+                  if(error){
+                    console.log('Error storage : ', error)
+                    setLoadingIndicator(false)
+                  }else{
+                      if(data){
+                        console.log('storage id : ', data)
+                        // Store image key in database
+                        const { data: userInDb, error } = await supabase
+                                    .from('User')
+                                    .update({ key: `Profile_Photos/${userAuth}/userPhoto_${uniqueVal}.${fileExt}` })
+                                    .eq('id', userAuth)
+                                    .select()
+                      if(userInDb){
+                        console.log('User object updated : ', userInDb )
+                        router.push({
+                          pathname: '/(auth)/welcomeScreen',
+                          params: {name, email, mobileNo, password}
+                        })
+                        setLoadingIndicator(false)
+                       }
+                    }
+                }          
+                
+                      
+              }else{
+                const arraybuffer = await fetch(image).then((res) => res.arrayBuffer())
+                const fileExt = image?.split('.').pop()?.toLowerCase() ?? 'jpeg'
+                const uniqueVal = Date.now()
+                const { data, error } = await supabase
+                .storage
+                .from('insta-photos')
+                .upload(`Profile_Photos/${userAuth}/userPhoto_${uniqueVal}.${fileExt}`, arraybuffer, {
+                  cacheControl: '3600',
+                  upsert: false,
+                  contentType: 'image/*'
+                })
+                if(error){
+                  console.log('Error storage : ', error)
+                  setLoadingIndicator(false)
+                }else{
+                    if(data){
+                      console.log('storage id : ', data)
+                      // Store image key in database
+                      const { data: userInDb, error } = await supabase
+                                  .from('User')
+                                  .update({ key: `Profile_Photos/${userAuth}/userPhoto_${uniqueVal}.${fileExt}` })
+                                  .eq('id', userAuth)
+                                  .select()
+                    if(userInDb){
+                      console.log('User object updated : ', userInDb )
+                      router.push({
+                        pathname: '/(auth)/welcomeScreen',
+                        params: {name, email, mobileNo, password}
+                      })
+                      setLoadingIndicator(false)
+                     }
+                  }
+              }          
+              }
+                    
+        } catch(error) {
           console.log('Error : ', error);
           setLoadingIndicator(false)
           showAlert()
@@ -115,7 +219,7 @@ export default function ProfilePicture(){
       const processImage = ()=>{
          if(image){
             setLoadingIndicator(true)
-            uploadImageToS3Bucket()
+            uploadImageToImagesBucket(image)
          }else{
           setOpenBottomSheet(true)
          }
@@ -131,6 +235,44 @@ export default function ProfilePicture(){
           })
         }
       }
+
+      const delImageInBucket = async (imgPath: string, param: boolean)=>{
+          const { data, error } = await supabase
+          .storage
+          .from('insta-photos')
+          .remove([`${imgPath}`])
+
+          if(error){
+            console.log('Error deleting image in bucket : ', error.message)
+            return
+          }
+
+            if(data){
+                console.log('Image deleted successfully : ', data)
+                 // Store image key in database
+                 const { data: userInDb, error } = await supabase
+                 .from('User')
+                 .update({ key: null })
+                 .eq('id', userAuth)
+                 .select()
+                if(param){
+                  return
+                }
+                setImage(null); 
+                setOpenBottomSheet(false)
+            }
+        
+      }
+
+     const deleteImage = async()=>{
+          const imgPath = await checkIfImageExistsInDb()
+          if(imgPath){
+            delImageInBucket(imgPath, false)
+          }else{
+            setImage(null); 
+            setOpenBottomSheet(false)
+          }
+     }
 
     return(
         <SafeAreaView style={{  flex: 1, 
@@ -203,11 +345,11 @@ export default function ProfilePicture(){
                 <BottomSheetView style={{ flex: 1 }}>
                      <View style={{ padding: 10, marginHorizontal: 3, marginBottom: 5, flex: 1, backgroundColor:'#F3FAFF', borderBottomLeftRadius: 20, borderBottomRightRadius: 20 }}>
                      <AntDesign onPress={()=> setOpenBottomSheet(false)} name="close" size={30} color="black" />
-                     <Text style={{fontWeight:'600', letterSpacing: 0.5, fontSize: 25, marginTop: 10}}>Add picture</Text>
+                     <Text style={{fontWeight:'600', letterSpacing: 0.5, fontSize: 25, marginTop: 10}}>{ image? 'Change picture' : 'Add Picture'}</Text>
                         <View style={{backgroundColor:'white', borderRadius: 20, padding: 20, marginTop: 20}}>
                             <Text onPress={()=> {  pickImage(); setOpenBottomSheet(false)}} style={{fontWeight:"500", letterSpacing: 0.5, fontSize: 17}}>Choose from Gallery</Text>
                             <Text onPress={()=> {  openCamera(); setOpenBottomSheet(false)}} style={{marginVertical: 25, fontWeight:"500", letterSpacing: 0.5, fontSize: 17}}>Take photo</Text>
-                            {image && <Text onPress={()=> {setImage(null); setOpenBottomSheet(false)}} style={{fontWeight:"500", letterSpacing: 0.5, fontSize: 17}}>Remove profile picture</Text>}
+                            {image && <Text onPress={deleteImage} style={{fontWeight:"500", letterSpacing: 0.5, fontSize: 17}}>Remove profile picture</Text>}
 
                         </View>
                      </View>

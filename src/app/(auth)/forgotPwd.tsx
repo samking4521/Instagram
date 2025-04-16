@@ -1,30 +1,43 @@
 import { useState, useRef } from "react"
-import { SafeAreaView, View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, StyleSheet, Modal} from "react-native"
+import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, StyleSheet, Modal} from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 import { AntDesign, MaterialIcons } from '@expo/vector-icons'
 import { router } from "expo-router"
-// import LinearGradient from 'react-native-linear-gradient';
+import { supabase } from "@/src/Providers/supabaselib"
 
 export default function ForgotPassword(){
     const [showUserData, setShowUserData] = useState(false)
     const userInputRef = useRef<TextInput>(null)
     const [showLoadingIndicator, setShowLoadingIndicator] = useState(false)
     const [errorText, setErrorText] = useState(false)
-
     const [userData, setUserData] = useState('')
 
-
       const resetUserPassword = async ()=>{
-            const regEx = /(^\d{5,}$)|(^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$)/
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
             if(userData.length == 0){
                 setShowUserData(true)
-            }else if(!(regEx.test(userData))){
-                setErrorText(true)
-            }else{
-                router.push({
-                    pathname:'/(auth)/newPassword',
-                    params: {userData}
-                })
+            }else if(emailRegex.test(userData)){
+                setShowLoadingIndicator(true)
+                const { data, error } = await supabase.auth.resetPasswordForEmail(userData)
+                if(error){
+                    console.log('Error : ', error.message)
+                    setShowLoadingIndicator(false)
+                }
+                else{
+                    if(data){
+                        console.log('reset data : ', data)
+                        router.push({
+                            pathname:'/(auth)/confirmResetCode',
+                            params: {userData}
+                        })
+                        setShowLoadingIndicator(false)
+                    }
+                }
+                
            
+            }
+            else{
+                setErrorText(true)
             }
       }
 
@@ -36,35 +49,28 @@ export default function ForgotPassword(){
       }
    
     return(
-    //     <LinearGradient
-    //     colors={['lightgreen', 'lightcoral', 'skyblue']} // Array of colors
-    //     start={{ x: 0, y: 0 }} // Start point (top-left)
-    //     end={{ x: 1, y: 1 }}   // End point (bottom-right)
-    //     style={{flex: 1}}
-    //   >
         <SafeAreaView style={styles.container}>
            <ScrollView keyboardShouldPersistTaps='handled' showsVerticalScrollIndicator={false} contentContainerStyle={{flex: 1}}>
             <AntDesign onPress={()=> router.back()} name="arrowleft" size={24} color="black" />
             
             <View style={{marginTop: 10}}>
                  <Text style={styles.headerText}>Forgot Password</Text>
-                 <Text style={styles.headerDescText}>Enter your email or mobile number</Text>
+                 <Text style={styles.headerDescText}>Enter your email</Text>
 
                  <Pressable onPress={()=>{ userInputRef.current?.focus(); setShowUserData(true)}} style={{...styles.textInputCont, borderColor: errorText? 'red' : '#4C4C4C' }}>
                    <View style={styles.userInputCont}>
-                            { showUserData && <Text style={styles.label}>Email or mobile number</Text>}
-                            {(!showUserData && userData.length == 0) && <Text style={styles.placeholder}>Email or Mobile number</Text>} 
+                            { showUserData && <Text style={styles.label}>Email</Text>}
+                            {(!showUserData && userData.length == 0) && <Text style={styles.placeholder}>Email</Text>} 
                             { showUserData && <TextInput ref={userInputRef} autoFocus={true} onBlur={()=> userData.length >= 1? setShowUserData(true) : setShowUserData(false) } cursorColor='black' style={styles.inputBox} keyboardType={'default'} value={userData} onChangeText={updateUserData}/>}
                    </View>
                   { (userData.length >=1 ) && <MaterialIcons onPress={()=> setUserData('')} name="clear" size={30} color="#4C4C4C" />}
                  </Pressable>
-                 <Text style={{...styles.descText, color: errorText? 'red' : '#4C4C4C'}}>{errorText? 'Invalid email or mobile number' : 'You may receive email or SMS notifications from us for security and login purposes'}</Text>
+                 <Text style={{...styles.descText, color: errorText? 'red' : '#4C4C4C'}}>{errorText? 'Invalid email' : 'You may receive email notifications from us for security and login purposes'}</Text>
             </View>
 
             <View style={styles.pressableContainer}> 
                 <Pressable onPress={resetUserPassword} style={styles.nextBtn}>
                     {showLoadingIndicator? <ActivityIndicator color='white' size='small'/> :  <Text style={styles.nextBtnText}>Continue</Text>}
-                    
                 </Pressable>
             </View>
              <Modal visible={showLoadingIndicator} onRequestClose={()=>{}} presentationStyle='overFullScreen' transparent={true}>
@@ -74,7 +80,6 @@ export default function ForgotPassword(){
                         </Modal>
             </ScrollView>
         </SafeAreaView>
-    // </LinearGradient>
     )
 }
 

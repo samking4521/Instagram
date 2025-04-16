@@ -1,24 +1,24 @@
-import { useState, useEffect } from "react"
-import { SafeAreaView, View, Text, TextInput, Pressable, Keyboard, ScrollView, Modal, StyleSheet, ActivityIndicator} from "react-native"
+import { useState, useEffect, useCallback } from "react"
+import { View, Text, TextInput, Pressable, Keyboard, BackHandler, Alert, Platform, ScrollView, Modal, StyleSheet, ActivityIndicator} from "react-native"
 import { AntDesign, MaterialIcons } from '@expo/vector-icons'
 import { StatusBar } from "expo-status-bar"
-import { router, useLocalSearchParams } from "expo-router"
+import { router, useLocalSearchParams, useNavigation } from "expo-router"
 import { useAppSelector } from "@/src/redux/app/hooks"
-// import LinearGradient from 'react-native-linear-gradient';
-import type { Schema } from '../../../amplify/data/resource'
-import { generateClient } from 'aws-amplify/data'
-
-const client = generateClient<Schema>()
+import { SafeAreaView } from "react-native-safe-area-context"
+import { useFocusEffect } from "@react-navigation/native"
+import { supabase } from "@/src/Providers/supabaselib"
+import { storage } from "../(home)/_layout"
 
 export default function EnterName(){
     const userAuth = useAppSelector((state)=> state.auth.userAuth)
-    const [name, setName] = useState('')
+    const { email, mobileNo, password, userData } = useLocalSearchParams()
+    const [name, setName] = useState(typeof userData === 'string' ? userData : '')
     const [keyboardVisible, setKeyboardVisible] = useState(false);
     const [showModal, setShowModal] = useState(false)
     const [showNameError, setShowNameError] = useState<string | boolean>(false)
     const [showLoadingIndicator, setShowLoadingIndicator] = useState(false)
-    const { email, mobileNo, password } = useLocalSearchParams()
-     
+    const navigation = useNavigation()
+
 
     useEffect(() => {
         const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -37,9 +37,12 @@ export default function EnterName(){
    
       const goToUsernameScreen = ()=>{
         const regex = /^[A-Za-z]+ [A-Za-z]+$/
+        if(typeof name !== 'string'){
+            return
+        }
             if(regex.test(name)){
                 setShowLoadingIndicator(true)
-                createNameInDb()
+                createName()
             }else if(name.length == 0){
                 setShowNameError('zero')
             }else{
@@ -54,58 +57,130 @@ export default function EnterName(){
                 }
       }
 
-      const createNameInDb = async()=>{
-        try{
-             if(!userAuth){
-                return
-             }
-             const {data: user} = await client.models.User.list({
-                filter: {
-                    sub: {
-                        'eq': userAuth
-                    }
-                }
-             })
 
-             if(user[0]){
-                const createName = await client.models.User.update({
-                   id: user[0].id,
-                   name: name
-                })
-                console.log('User name created successfully : ', createName )
-                router.push({
-                    pathname: '/(auth)/createUsername',
-                    params: { email, mobileNo, password }
-                })
-                setShowLoadingIndicator(false)
-             }
-            
-        }catch(e){
-            if(e instanceof Error){
-                console.log('Error creating name in db : ', e.message)
-            }
-            setShowNameError('network')
-            setShowLoadingIndicator(false)
+      const createName = async ()=>{
+            const { data, error } = await supabase
+            .from('User')
+            .update({ name: name })
+            .eq('id', userAuth)
+            .select()
+
+            if(data){
+                if(data[0]){
+                    console.log('User name created successfully : ', data[0] )
+                    router.push({
+                        pathname: '/(auth)/createUsername',
+                        params: { email, mobileNo, password, userData: data[0]?.username }
+                    })
+                    setShowLoadingIndicator(false)
+                }
+            }   
+      }
+      
+      
+      const changeMedium = ()=>{
+        const keys = storage.getAllKeys()
+        if(email){
+            navigation.reset({
+                index: keys[0]? 2 : 1,
+                routes: keys[0]? [
+                    { name: 'autoSignIn' as never },
+                         { name: 'signIn' as never },
+                        { name: 'signUpEmail' as never }]
+                        : 
+                        [
+                            { name: 'signIn' as never },
+                           { name: 'signUpEmail' as never }]
+                        // your stack screen name
+            });
+        }else{
+            navigation.reset({
+                index: keys[0]? 2 : 1,
+                routes: keys[0]? [
+                    { name: 'autoSignIn' as never },
+                         { name: 'signIn' as never },
+                        { name: 'signUp' as never }]
+                        : 
+                        [
+                            { name: 'signIn' as never },
+                           { name: 'signUp' as never }]
+                        // your stack screen name
+            });
         }
       }
 
+      useFocusEffect(
+              useCallback(() => {
+                const onBackPress = () => {
+                  // Your custom logic here
+                  Alert.alert('Hold on!', 'Are you sure you want to go back?', [
+                    {
+                      text: 'Cancel',
+                      onPress: () => null,
+                      style: 'cancel',
+                    },
+                    { text: 'YES', onPress: () => changeMedium() },
+                  ], 
+                  { cancelable: true });
+          
+                  return true; // Prevent default behavior (go back)
+                };
+          
+                if (Platform.OS === 'android') {
+                  BackHandler.addEventListener('hardwareBackPress', onBackPress);
+                }
+          
+                return () => {
+                  if (Platform.OS === 'android') {
+                    BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+                  }
+                };
+              }, [])
+            );
+
+            const goEmail_or_Mobile = ()=>{
+                Alert.alert('Hold on!', 'Are you sure you want to go back?', [
+                    {
+                      text: 'Cancel',
+                      onPress: () => null,
+                      style: 'cancel',
+                    },
+                    { text: 'YES', onPress: () => changeMedium() },
+                    
+                  ], 
+                  { cancelable: true },
+                );
+            }
+
+          
+            const goToSignIn = ()=>{
+                setShowModal(false)
+                const keys = storage.getAllKeys()
+        
+                    navigation.reset({
+                        index: 0,
+                        routes: keys[0]? [
+                            { name: 'autoSignIn' as never }
+                        ] : 
+                        [
+                            { name: 'signIn' as never }
+                        ]
+                    });
+               
+                
+              }
+           
+
     return(
-    //     <LinearGradient
-    //     colors={['lightgreen', 'lightcoral', 'skyblue']} // Array of colors
-    //     start={{ x: 0, y: 0 }} // Start point (top-left)
-    //     end={{ x: 1, y: 1 }}   // End point (bottom-right)
-    //     style={{flex: 1}}
-    //   >
         <SafeAreaView style={styles.container}>
            <ScrollView keyboardShouldPersistTaps='handled' showsVerticalScrollIndicator={false} contentContainerStyle={{flex: 1}}>
-            <AntDesign onPress={()=> router.back()} name="arrowleft" size={24} color="black" />
-            
+            <AntDesign onPress={goEmail_or_Mobile} name="arrowleft" size={24} color="black" />
             <View style={{marginTop: 10}}>
                  <Text style={styles.headerText}>What's your name?</Text>
                  <Pressable style={{...styles.TextInputContainer, borderColor: showNameError? 'red' : '#4C4C4C'}}>
                    <View style={styles.emailInputCont}>
                              <Text style={{...styles.label, color: showNameError? 'red' : '#4C4C4C'}}>Full name</Text>
-                            <TextInput autoFocus={true} cursorColor='black' style={styles.inputBox} keyboardType='default' autoCapitalize='words' value={name} onChangeText={updateEmail}  />
+                            <TextInput autoFocus={true} cursorColor='black' style={styles.inputBox} keyboardType='default' autoCapitalize='words' value={name || ''} onChangeText={updateEmail}  />
                    </View>
                   { (name.length >=1 && keyboardVisible && !showNameError) && <MaterialIcons onPress={()=> setName('')} name="clear" size={30} color="#4C4C4C" />}
                   { showNameError && <AntDesign name="exclamationcircleo" size={24} color="red" />}
@@ -130,7 +205,7 @@ export default function EnterName(){
                         <View style={styles.alertBox}>
                             <Text style={styles.haveAnAccText}>Already have an account?</Text>
                             <View style={styles.actionBtnCont}>
-                                <Text onPress={()=> router.push('/(auth)/signIn')} style={styles.logInText}>LOG IN</Text>
+                                <Text onPress={goToSignIn} style={styles.logInText}>LOG IN</Text>
                                 <Text onPress={()=> setShowModal(false)} style={styles.continueToAccText}>CONTINUE CREATING ACCOUNT</Text>
                             </View>
                         </View>
@@ -142,7 +217,7 @@ export default function EnterName(){
                  </View>
             </Modal>
         </SafeAreaView>
-    // </LinearGradient>
+   
     )
 }
 

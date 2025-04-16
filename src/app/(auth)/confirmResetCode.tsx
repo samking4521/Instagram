@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect, useRef } from "react"
-import { SafeAreaView, View, Text, TextInput, Alert, Pressable, Keyboard, ScrollView, StyleSheet, ActivityIndicator, Modal} from "react-native"
+import { View, Text, TextInput, Pressable, Keyboard, ScrollView, StyleSheet, ActivityIndicator, Modal} from "react-native"
 import { AntDesign, MaterialIcons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from "expo-router"
-import { confirmResetPassword, resetPassword } from 'aws-amplify/auth';
 import BottomSheet, {BottomSheetView} from '@gorhom/bottom-sheet';
+import { SafeAreaView } from "react-native-safe-area-context";
+import { supabase } from "@/src/Providers/supabaselib";
 
 export default function ResetConfirmCode(){
     const [showConfirmCodeText, setShowConfirmCodeText] = useState(false)
@@ -15,7 +16,7 @@ export default function ResetConfirmCode(){
     const [loadingSpinner, setLoadingSpinner] = useState(false)
     const [codeResent, setCodeResent] = useState(false)
     const labelRef = useRef<TextInput>(null)
-    const { userData, password } = useLocalSearchParams()
+    const { userData } = useLocalSearchParams()
     const snapPoints = useMemo(()=> ['70%'], [])
     const bottomSheetRef = useRef<BottomSheet>(null)
    
@@ -42,22 +43,16 @@ export default function ResetConfirmCode(){
 
       const resendConfirmationCode = async ()=>{
              setLoadingSpinner(true)
-                              if(typeof userData !== 'string'){
-                                  return
-                              }
-                              const output = await resetPassword({
-                                  username: userData
-                                });
-                                const { nextStep } = output;
-                                if (nextStep.resetPasswordStep == 'CONFIRM_RESET_PASSWORD_WITH_CODE') {
-                                    const codeDeliveryDetails = nextStep.codeDeliveryDetails;
-                                    console.log(
-                                      `Confirmation code was sent to ${codeDeliveryDetails.deliveryMedium}`
-                                    );
-                                    setCodeResent(true)
-                                    setOpenBottomSheet(false)
-                                    setLoadingSpinner(false)
-                        }
+           
+                if(typeof userData !== 'string'){
+                    return
+                }
+                const { data, error } = await supabase.auth.resetPasswordForEmail(userData)
+                    console.log('code resent: ', data)
+                    setCodeResent(true)
+                    setOpenBottomSheet(false)
+                    setLoadingSpinner(false)
+                        
                     }
 
       const updateConfirmCode = (val: string)=>{
@@ -80,40 +75,38 @@ export default function ResetConfirmCode(){
       }
 
 
-       const showAlert = ()=>{
-              Alert.alert(
-                 'Password reset successful',
-                 "Your password reset was successful. Proceed to sign in",
-                  [
-                    { text: "SIGN IN", onPress: () => router.push('/(auth)/signIn') },
-                  ]
-                );
-          }
-
+      
     const confirmationCode = async()=>{
         try{
             if(typeof userData !== 'string'){
+                console.log('azz')
                 return
             }
-            if(typeof password !== 'string'){
+         
+            const { data: {session}, error } = await supabase.auth.verifyOtp({ email: userData, token: confirmCode, type: 'email'})
+            if(error){
+                console.log('Error confirming code : ', error.message)
+                if(error.code == 'otp_expired'){
+                    setShowConfirmCodeErrorText('Invalid code')
+                    setShowLoadingIndicator(false)
+                }else{
+                    setShowConfirmCodeErrorText('network error')
+                }  
                 return
             }
-            await confirmResetPassword({
-              username: userData,
-              confirmationCode: confirmCode,
-              newPassword: password,
-            });
-            showAlert()
+            if(session){
+                console.log('confirmed user id: ', session.user.id)
+                router.push({
+                    pathname:'/(auth)/newPassword'
+                })
+                setShowLoadingIndicator(false)
+            }
+            // showAlert()
         }catch(e){
            if(e instanceof Error){
-               console.log('Error confirming code', e.name)
+               console.log('Error confirming code', e.message)
                setShowLoadingIndicator(false)
-               if(e.name == 'CodeMismatchException'){
-                   setShowConfirmCodeErrorText('Invalid code')
-               }else{
-                   setShowConfirmCodeErrorText('network error')
-               }
-               
+               setShowConfirmCodeErrorText('network error')
            }
         }
     }
@@ -122,13 +115,6 @@ export default function ResetConfirmCode(){
     
     
     return(
-    //     <LinearGradient
-    //     colors={['lightgreen', 'lightcoral', 'skyblue']} // Array of colors
-    //     start={{ x: 0, y: 0 }} // Start point (top-left)
-    //     end={{ x: 1, y: 1 }}   // End point (bottom-right)
-    //     style={{flex: 1}}
-    //   >
-      
         <SafeAreaView style={styles.container}>
            <ScrollView keyboardShouldPersistTaps='handled' showsVerticalScrollIndicator={false} contentContainerStyle={{flex: 1}}>
             <AntDesign onPress={()=> router.back()} name="arrowleft" size={24} color="black" />

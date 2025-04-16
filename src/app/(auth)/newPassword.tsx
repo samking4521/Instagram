@@ -1,10 +1,10 @@
 import { useState, useRef } from "react"
-import { SafeAreaView, View, Text, TextInput, Alert, Pressable, Keyboard, ScrollView, StyleSheet, ActivityIndicator, Modal} from "react-native"
+import { View, Text, TextInput, Alert, Pressable, Keyboard, ScrollView, StyleSheet, ActivityIndicator, Modal} from "react-native"
 import { AntDesign, Feather } from '@expo/vector-icons'
-import { router, useLocalSearchParams } from "expo-router"
-import { resetPassword } from "aws-amplify/auth"
-
-// import LinearGradient from 'react-native-linear-gradient';
+import { router, useNavigation } from "expo-router"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { supabase } from "@/src/Providers/supabaselib"
+import { storage } from "../(home)/_layout"
 
 export default function CreatePassword(){
     const [password, setPassword] = useState('')
@@ -12,8 +12,8 @@ export default function CreatePassword(){
     const [showPwdErr, setShowPwdErr] = useState<boolean | string>(false)
     const [showLoadingIndicator, setShowLoadingIndicator] = useState(false)
     const TxtInputContRef = useRef(null)
-    const { userData} = useLocalSearchParams()
-    
+    const navigation = useNavigation()
+
     const showAlert = ()=>{
         Alert.alert(
            'Network Error',
@@ -24,30 +24,55 @@ export default function CreatePassword(){
           );
     }
 
+     const showSuccessAlert = ()=>{
+                  Alert.alert(
+                     'Password reset successful',
+                     "Your password reset was successful. Proceed to sign in",
+                      [
+                        { text: "SIGN IN", onPress: goToSignIn },
+                      ]
+                    );
+              }
+    
+             const goToSignIn = ()=>{
+                            
+                             const keys = storage.getAllKeys()
+                     
+                                 navigation.reset({
+                                     index: 0,
+                                     routes: keys[0]? [
+                                         { name: 'autoSignIn' as never }
+                                     ] : 
+                                     [
+                                         { name: 'signIn' as never }
+                                     ]
+                                 });
+                            
+                             
+                           }
+                        
+             
+    
     
      async function resetUserPassword(){
         try{
             const regex = /.*\d.*/
             if(password.length >= 6 && regex.test(password) ){
                    setShowLoadingIndicator(true)
-                   if(typeof userData !== 'string'){
-                       return
-                   }
-                   const output = await resetPassword({
-                       username: userData
-                     });
-                     const { nextStep } = output;
-                     if (nextStep.resetPasswordStep == 'CONFIRM_RESET_PASSWORD_WITH_CODE') {
-                         const codeDeliveryDetails = nextStep.codeDeliveryDetails;
-                         console.log(
-                           `Confirmation code was sent to ${codeDeliveryDetails.deliveryMedium}`
-                         );
-                         router.push({
-                           pathname: '/(auth)/confirmResetCode',
-                           params: {userData, password}
-                         })
-                         setShowLoadingIndicator(false)
-                     }
+                   const { data: {user}, error } = await supabase.auth.updateUser({
+                    password: password
+                  })
+                  if(error){
+                    console.log('Error updating new password : ', error.message)
+                    setShowLoadingIndicator(false)
+                    showAlert()
+                    return
+                  }
+                  if(user){
+                     console.log('Password update success : ', user)
+                     setShowLoadingIndicator(false)
+                     showSuccessAlert()
+                  }
                }
            else if(password.length >= 6 && !(regex.test(password))){
                Keyboard.dismiss()
@@ -62,13 +87,9 @@ export default function CreatePassword(){
            }
         }catch(e){
             if(e instanceof Error){
-                console.log('Error resetting password : ', e.name)
-                if(e.name == 'NetworkError'){
+                    console.log('Error resetting password : ', e.message)
                     setShowLoadingIndicator(false)
                     showAlert()
-                }else{
-                    setShowLoadingIndicator(false)
-                }
             }
            
         }
@@ -83,12 +104,6 @@ export default function CreatePassword(){
       }
    
     return(
-    //     <LinearGradient
-    //     colors={['lightgreen', 'lightcoral', 'skyblue']} // Array of colors
-    //     start={{ x: 0, y: 0 }} // Start point (top-left)
-    //     end={{ x: 1, y: 1 }}   // End point (bottom-right)
-    //     style={{flex: 1}}
-    //   >
       
         <SafeAreaView style={styles.container}>
            <ScrollView keyboardShouldPersistTaps='always' showsVerticalScrollIndicator={false} contentContainerStyle={{flex: 1}}>

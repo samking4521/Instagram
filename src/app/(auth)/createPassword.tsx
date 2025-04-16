@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react"
-import { SafeAreaView, View, Text, TextInput, Pressable, Keyboard, ScrollView, StyleSheet, ActivityIndicator, Modal} from "react-native"
-import { signUp } from 'aws-amplify/auth';
+import { View, Text, TextInput, Pressable, Keyboard, ScrollView, StyleSheet, ActivityIndicator, Modal} from "react-native"
 import { AntDesign, Feather } from '@expo/vector-icons'
-import { router, useLocalSearchParams } from "expo-router"
+import { router, useLocalSearchParams, useNavigation } from "expo-router"
 import { StatusBar } from "expo-status-bar"
-import { storage } from "./signIn";
-// import LinearGradient from 'react-native-linear-gradient';
+import { supabase } from "@/src/Providers/supabaselib"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { storage } from "../(home)/_layout"
 
 export default function CreatePassword(){
     const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -15,148 +15,97 @@ export default function CreatePassword(){
     const [showPwdErr, setShowPwdErr] = useState<boolean | string>(false)
     const [showLoadingIndicator, setShowLoadingIndicator] = useState(false)
     const TxtInputContRef = useRef(null)
-    const { email, mobileNo } = useLocalSearchParams()
-
-    const storeDataLocally = (val: string)=>{
-        if(email){
-            if(typeof email == 'string' ){
-                storage.set(email, val)
-            }
-        }else{
-            if(typeof mobileNo == 'string' ){
-                storage.set(mobileNo, val)
-            }
-        }
-       
-    }
+    const { email } = useLocalSearchParams()
+    const navigation = useNavigation()
     
      function SignUp(){
          const regex = /.*\d.*/
          if(password.length >= 6 && regex.test(password) ){
-                setShowLoadingIndicator(true)
-                if(email){
+                    setShowLoadingIndicator(true)    
                     signUpEmail()
-                }else{
-                    signUpMobileNumber()
-                }
-               
          }else if(password.length >= 6 && !(regex.test(password))){
             Keyboard.dismiss()
-            setShowPwdErr('invalid password')
+            setShowPwdErr('invalid_password')
          }
-         else if(password.length >= 1 && password.length < 6 && !(regex.test(password))){
+         else if(password.length < 6 && password.length !== 0){
                 Keyboard.dismiss()
-                setShowPwdErr('less than 6')
+                setShowPwdErr('less_than_6')
          }
         else{
                 setShowPwdErr('zero')
         }
      }
 
-     const signUpMobileNumber = async()=>{
+
+
+     
+
+     const userSignUp = async ()=>{
         try{
-               if(typeof mobileNo !== 'string'){
+            if(email){
+                if(typeof email !== 'string'){
                     return
                }
-
-                // Sign up using a phone number
-
-               const { nextStep: signUpNextStep } = await signUp({
-                username: mobileNo,
-                password: password,
-                options: {
-                    userAttributes: {
-                        phone_number: mobileNo,
-                        email: '',
-                    }
-                },
-            });
-
-                if (signUpNextStep.signUpStep === 'DONE') {
-                    console.log(`SignUp Complete`);
-                }
-
-                if (signUpNextStep.signUpStep === 'CONFIRM_SIGN_UP') {
-                    console.log(
-                        `Code Delivery Medium: ${signUpNextStep.codeDeliveryDetails.deliveryMedium}`,
-                    );
-                    console.log(
-                        `Code Delivery Destination: ${signUpNextStep.codeDeliveryDetails.destination}`,
-                    );
-                }
-                await storeDataLocally(password)
-                console.log('User sign up key stored locally')
-                 // Go to confirm code screen
-                 router.push({
-                    pathname: '/(auth)/confirmCode',
-                    params: {mobileNo, password}
+                // Sign up using a email
+                const { data: {session}, error} = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
                 })
-                // hide loading indicator
-                setShowLoadingIndicator(false)
-
-        }catch(e){
-               if(e instanceof Error){
-                   console.log('Error signing up mobile : ', e.message)
-                   if(e.message == 'User already exists'){
-                    setShowPwdErr('user exists')
-                    }else{
-                        setShowPwdErr('Network error')
+        
+                if(error){
+                    if(error instanceof Error){
+                        console.error('Error signing up email', error.message)
                     }
-                    setShowLoadingIndicator(false)
-               }
-              
+                    setShowPwdErr('network_error')
+                }else{
+                    if(!session){
+                        console.log('Email Signup complete, confirm code')
+                        // Go to confirm code screen
+                        router.push({
+                            pathname: '/(auth)/confirmCode',
+                            params: {email, password}
+                    })
+                  }
+                }
+                setShowLoadingIndicator(false)
+            }
+        }catch(e){
+            if(e instanceof Error){
+                console.log('Error signing up phone', e.message)
+            }
+            setShowPwdErr('network_error')
+            setShowLoadingIndicator(false)
         }
+        
      }
    
      const signUpEmail = async()=>{
         try{
-            if(typeof email === 'string'){
-                const { nextStep: signUpNextStep } = await signUp({
-                username: email,
-                password: password,
-                options: {
-                    userAttributes: {
-                        email: email,
-                        phone_number: ''
-                    }
-                },
-            });
+            // Check if email exists in database using rpc (remote procedure call)
+            const { data } = await supabase.rpc("get_user_id_by_email", { email: email });
+             if(!data){
+                    userSignUp()
+                }
+                else{
+                    //Check if email is confirmed
+                        const { data: emailConfirmed } = await supabase.rpc("is_email_confirmed", { email_param: email });
+                        if(!emailConfirmed){
+                            const { data, error } = await supabase.rpc('delete_unverified_user_by_email', { user_email: email});
+                              console.log('delete : ', data)
+                                if(data){
+                                userSignUp()
+                                }       
+                }
+            }
 
-                if (signUpNextStep.signUpStep === 'DONE') {
-                    console.log(`SignUp Complete`);
-                }
-                
-                if (signUpNextStep.signUpStep === 'CONFIRM_SIGN_UP') {
-                    console.log(
-                        `Code Delivery Medium: ${signUpNextStep.codeDeliveryDetails.deliveryMedium}`,
-                    );
-                    console.log(
-                        `Code Delivery Destination: ${signUpNextStep.codeDeliveryDetails.destination}`,
-                    );
-                    await storeDataLocally(password)
-                    console.log('User sign up key stored locally')
-                    // Go to confirm code screen
-                    router.push({
-                        pathname: '/(auth)/confirmCode',
-                        params: {email, password}
-                    })
-                    // hide loading indicator
-                    setShowLoadingIndicator(false)
-                }
-            } 
         }catch(e){
             if(e instanceof Error){
-                console.log('Error signing up email: ', e)
-                if(e.name === 'UsernameExistsException'){
-                    setShowPwdErr('user exists')
-                }else{
-                    setShowPwdErr('Network error')
-                }
-                setShowLoadingIndicator(false)
+                console.log('Error signing up email', e.message)
             }
+            setShowPwdErr('network_error')
+            setShowLoadingIndicator(false)
         }
-        
-      }
+     }
 
     
     useEffect(() => {
@@ -180,19 +129,30 @@ export default function CreatePassword(){
                 setShowPwdErr(false)
             }     
       }
+
+     const goToSignIn = ()=>{
+                     setShowModal(false)
+                     const keys = storage.getAllKeys()
+             
+                         navigation.reset({
+                             index: 0,
+                             routes: keys[0]? [
+                                 { name: 'autoSignIn' as never }
+                             ] : 
+                             [
+                                 { name: 'signIn' as never }
+                             ]
+                         });
+                    
+                     
+                   }
+                
    
     return(
-    //     <LinearGradient
-    //     colors={['lightgreen', 'lightcoral', 'skyblue']} // Array of colors
-    //     start={{ x: 0, y: 0 }} // Start point (top-left)
-    //     end={{ x: 1, y: 1 }}   // End point (bottom-right)
-    //     style={{flex: 1}}
-    //   >
-      
+   
         <SafeAreaView style={styles.container}>
-           <ScrollView keyboardShouldPersistTaps='always' showsVerticalScrollIndicator={false} contentContainerStyle={{flex: 1}}>
+           <ScrollView keyboardShouldPersistTaps='handled' showsVerticalScrollIndicator={false} contentContainerStyle={{flex: 1}}>
             <AntDesign onPress={()=> router.back()} name="arrowleft" size={24} color="black" />
-            
             <View style={{marginTop: 10}}>
                  <Text style={styles.headerText}>Create a password</Text>
                  <Text style={styles.headerDescText}>Create a password with at least 6 letters or numbers. It should be something others can't guess.</Text>
@@ -205,7 +165,7 @@ export default function CreatePassword(){
                 </View>
                         { showPwdErr?  <AntDesign name="exclamationcircleo" size={24} color="red" /> :  <Feather onPress={()=> setShowPwd(!showPwd)} name={showPwd? "eye-off" : "eye"} size={28} color="#4C4C4C" />}                
                  </Pressable>
-                 {showPwdErr && <Text style={{color:"red", letterSpacing: 0.5}}>{showPwdErr == 'zero'? 'Password cannot be empty' : showPwdErr == 'less than 6'? 'This password is too short. Create a longer password with at least 6 letters and numbers' : showPwdErr == 'invalid password'? 'Password must contain letters and at least one number' : showPwdErr == 'user exists'? 'User already exists' : 'Something went wrong! check your internet connection or try again later'}</Text>}
+                 {showPwdErr && <Text style={{color:"red", letterSpacing: 0.5}}>{showPwdErr == 'zero'? 'Password cannot be empty' : showPwdErr == 'less_than_6'? 'This password is too short. Create a longer password with at least 6 letters and numbers' : showPwdErr == 'invalid_password'? 'Password must contain letters and at least one number' : showPwdErr == 'user_exists'? 'User already exists. Please try logging in.' : 'Something went wrong! check your internet connection or try again later'}</Text>}
 
             </View>
 
@@ -223,25 +183,15 @@ export default function CreatePassword(){
                 <StatusBar style='light' backgroundColor="rgba(0,0,0,0.3)"/>
                 <Pressable onPress={()=> setShowModal(false)} style={styles.modalCont}>
                         <View style={styles.alertBox}>
-                            <Text style={styles.haveAnAccText}>Already have an account?</Text>
+                            <Text style={styles.haveAnAccText}>Already have an account</Text>
                             <View style={styles.actionBtnCont}>
-                                <Text onPress={()=> router.push('/(auth)/signIn')} style={styles.logInText}>LOG IN</Text>
-                                <Text onPress={()=> setShowModal(false)} style={styles.continueToAccText}>CONTINUE CREATING ACCOUNT</Text>
+                                <Text onPress={goToSignIn} style={styles.logInText}>LOG IN</Text>
+                               <Text onPress={()=> setShowModal(false)} style={styles.continueToAccText}>CONTINUE CREATING ACCOUNT</Text>
                             </View>
                         </View>
                 </Pressable>
             </Modal>
-            <Modal visible={showLoadingIndicator} onRequestClose={()=>{}} presentationStyle='overFullScreen' transparent={true}>
-                 <View style={{flex: 1}}>
-
-                 </View>
-            </Modal>
         </SafeAreaView>
-
-        
-          
-     
-  
     )
 }
 

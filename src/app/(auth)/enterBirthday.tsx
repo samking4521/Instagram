@@ -1,39 +1,59 @@
 import { useState, useEffect } from "react"
-import { SafeAreaView, View, Text, Pressable, Keyboard, ScrollView, StyleSheet, Modal, ActivityIndicator} from "react-native"
+import { View, Text, Pressable, Keyboard, ScrollView, StyleSheet, Modal, ActivityIndicator} from "react-native"
 import { AntDesign } from '@expo/vector-icons'
-import { router, useLocalSearchParams } from "expo-router"
+import { router, useLocalSearchParams, useNavigation } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import DatePicker from 'react-native-date-picker'
-import LinearGradient from 'react-native-linear-gradient';
-import type { Schema } from '../../../amplify/data/resource'
-import { generateClient } from 'aws-amplify/data'
 import { useAppSelector } from "@/src/redux/app/hooks"
-
-const client = generateClient<Schema>()
+import { supabase } from "@/src/Providers/supabaselib"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { parse, getYear } from 'date-fns';
+import { storage } from "../(home)/_layout"
 
 export default function EnterBirthday(){
     const userAuth = useAppSelector((state) => state.auth.userAuth)
+    const {name, email, mobileNo, password, userData} = useLocalSearchParams()
+    const userDob = typeof userData == 'string'? userData : undefined
+    const dateObject = userDob? parse(userDob, 'MMMM d, yyyy', new Date()) : undefined;
     const [keyboardVisible, setKeyboardVisible] = useState(false);
-    const [date, setDate] = useState(new Date())
-    const [open, setOpen] = useState(true)
+    const [date, setDate] = useState(dateObject || new Date())
+    const [open, setOpen] = useState(userDob? false : true)
     const [showModal, setShowModal] = useState(false)
-    const [dateValue, setDateValue] = useState('')
+    const [dateValue, setDateValue] = useState(userDob || '')
+    const [userDobDb, setUserDobDb] = useState(true)
     const [userAge, setUserAge] = useState(0)
     const [showDateError, setShowDateError] = useState<string | boolean>(false)
     const [loadingIndicator, setLoadingIndicator] = useState(false)
-    const {name, email, mobileNo, password} = useLocalSearchParams()
+    const navigation = useNavigation()
+
+    
 
     const getUserAge = ()=>{
-        const currentDate = new Date().getFullYear();
-        const theUserAge = currentDate -  date.getFullYear()
-        setUserAge(theUserAge)
+        if(userDob && userDobDb){
+            const currentDate = new Date().getFullYear();
+            const dateString = userDob
+            const parsedDate = dateString ? parse(dateString, 'MMMM d, yyyy', new Date()) : new Date();
+            const year = getYear(parsedDate);
+            const user_Dob = currentDate - year
+            setUserAge(user_Dob)
+            setUserDobDb(false)
+        }else{
+            const currentDate = new Date().getFullYear();
+            const theUserAge = currentDate - date.getFullYear()
+            setUserAge(theUserAge)
+        }
+        
     }
 
+   
     useEffect(()=>{
         getUserAge()
     }, [date])
 
     useEffect(()=>{
+        if(userDob){
+            return
+        }
         const currentDate = new Date();
 
         // Get the parts of the date
@@ -69,26 +89,18 @@ export default function EnterBirthday(){
             if(!userAuth){
                 return
             }
-            const {data: user} = await client.models.User.list({
-                filter: {
-                    sub: {
-                        'eq': userAuth
-                    }
-                }
-            })
+            const { data } = await supabase
+                        .from('User')
+                        .update({ dob: dateValue })
+                        .eq('id', userAuth)
+                        .select()
          
-            if(user[0]){
-                const addDob = await client.models.User.update({
-                id: user[0].id,
-                dob: dateValue
-                })
-                console.log('User birthday added successfully : ', addDob )
+                console.log('User birthday added successfully', data)
                 router.push({
                     pathname: '/(auth)/profilePicture',
                     params: {name, email, mobileNo, password}
                   })
                 setLoadingIndicator(false)
-           }
         }catch(e){
             if(e instanceof Error){
                 console.log('Error adding user birthday : ', e.message)
@@ -120,17 +132,24 @@ export default function EnterBirthday(){
         };
       }, []);
 
-     
-   
-    
+       const goToSignIn = ()=>{
+                     setShowModal(false)
+                     const keys = storage.getAllKeys()
+             
+                         navigation.reset({
+                             index: 0,
+                             routes: keys[0]? [
+                                 { name: 'autoSignIn' as never }
+                             ] : 
+                             [
+                                 { name: 'signIn' as never }
+                             ]
+                         });
+                    
+                     
+                   }
    
     return(
-    //     <LinearGradient
-    //     colors={['lightgreen', 'lightcoral', 'skyblue']} // Array of colors
-    //     start={{ x: 0, y: 0 }} // Start point (top-left)
-    //     end={{ x: 1, y: 1 }}   // End point (bottom-right)
-    //     style={{flex: 1}}
-    //   >
         <SafeAreaView style={styles.container}>
            <ScrollView keyboardShouldPersistTaps='always' showsVerticalScrollIndicator={false} contentContainerStyle={{flex: 1}}>
             <AntDesign onPress={()=> router.back()} name="arrowleft" size={24} color="black" />
@@ -179,7 +198,7 @@ export default function EnterBirthday(){
                         <View style={styles.alertBox}>
                             <Text style={styles.haveAnAccText}>Already have an account?</Text>
                             <View style={styles.actionBtnCont}>
-                                <Text onPress={()=> router.push('/(auth)/signIn')} style={styles.logInText}>LOG IN</Text>
+                                <Text onPress={goToSignIn} style={styles.logInText}>LOG IN</Text>
                                 <Text onPress={()=> setShowModal(false)} style={styles.continueToAccText}>CONTINUE CREATING ACCOUNT</Text>
                             </View>
                         </View>
@@ -191,10 +210,6 @@ export default function EnterBirthday(){
                  </View>
             </Modal>
         </SafeAreaView>
-        // </LinearGradient>
-
-        
-          
      
   
     )

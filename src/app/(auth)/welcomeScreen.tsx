@@ -1,18 +1,15 @@
-import { useFonts } from 'expo-font';
-import { View, Text, Pressable, SafeAreaView, Image, ActivityIndicator, Modal} from 'react-native'
+import { View, Text, Pressable, Image, ActivityIndicator, Modal} from 'react-native'
 import { Feather, AntDesign } from '@expo/vector-icons'
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { getUrl } from 'aws-amplify/storage';
-import { useState, useLayoutEffect } from 'react';
-import { getCurrentUser } from 'aws-amplify/auth'
-import type { Schema } from '../../../amplify/data/resource'
-import { generateClient } from 'aws-amplify/data'
-import { storage } from './signIn';
+import { useState, useEffect } from 'react';
+import { storage } from '../(home)/_layout';
 import * as FileSystem from 'expo-file-system';
-
-const client = generateClient<Schema>()
+import { supabase } from '@/src/Providers/supabaselib';
+import { useAppSelector } from '@/src/redux/app/hooks';
 
 export default function WelcomeScreen(){
+    const userAuth = useAppSelector((state)=> state.auth.userAuth)
     const { name, email, mobileNo, password} = useLocalSearchParams()
     const [image, setImage] = useState<string | null>(null)
     const [loadingIndicator, setLoadingIndicator] = useState(false)
@@ -21,68 +18,54 @@ export default function WelcomeScreen(){
 
     const setCompleteSignUp = async()=>{
         try{
-            // get user in Database
-              const { userId } = await getCurrentUser();
-              console.log('userId : ', userId)
-              // if userId returns true
-              if(userId){
-                  const { data: user } = await client.models.User.list({
-                    filter: {
-                      sub: {
-                          'eq': userId
-                      }
-                    }
-                  });
-                  console.log('User : ', user)
-            
-                  const updatedUserDataObj = {
-                      id: user[0].id,
-                      completeSignUp: true
-                    };
-                    // update user obj with username
-                    const { data: updatedUserData } = await client.models.User.update(updatedUserDataObj);
-                    console.log('Updated User Data : ', updatedUserData)
-              }
+            const { data } = await supabase
+            .from('User')
+            .update({ signInStatus: true })
+            .eq('id', userAuth)
+            .select()   
+
+            if(data){
+                if(data[0]){
+                    console.log('User signInStatus updated successfully : ', data[0] )
+                }
+            }   
         }catch(e){
-            console.log('Error updating user complete sign up key : ', e)
+            console.log('Error updating user signInStatus: ', e)
             showErrorText(true)
             setLoadingIndicator(false)
         }
     }
-
-     useFonts({
-        'Pacifico-Regular': require('../../../assets/fonts/Pacifico-Regular.ttf'),
-       });
     
-     useLayoutEffect(()=>{
-        getUserProfileImg()
+     useEffect(()=>{
+        checkIfImageExistsInDb()
      }, [])
 
-     const getUserProfileImg = async ()=>{
-        const linkToStorageFile = await getUrl({
-            path: ({identityId}) => `media/userProfilePicture/${identityId}/*`,
-          });
-          setImage(linkToStorageFile.url.href)
+     const checkIfImageExistsInDb = async()=>{
+        const { data } = await supabase
+        .from('User')
+        .select('key')
+        .eq('id', userAuth)
+        console.log('Key object : ', data)
+        if(data){
+           if(data[0].key){
+            getUserProfileImg(data[0].key)
+           }
+        }
+      }
+
+  
+
+     const getUserProfileImg = async (imgUrl: string)=>{
+        const { data: {publicUrl} } = supabase
+        .storage
+        .from('insta-photos')
+        .getPublicUrl(imgUrl)
+        if(publicUrl){
+            setImage(publicUrl)
+        }
      }
-
-     const clearLocalStorage = async()=>{
-            // delete a specific key + value
-            if(email){
-                if(typeof email !== 'string'){
-                    return
-                }
-                storage.delete(email)
-                storage.delete(`${email} confirmed`)
-            }else{
-                if(typeof mobileNo !== 'string'){
-                    return
-                }
-                storage.delete(mobileNo)
-                storage.delete(`${mobileNo} confirmed`)
-            }
-     }
-
-
+      
+    
      const saveImageToLocal = async (imageUrl: string) => {
         try {
                 const fileName = imageUrl.split('/').pop(); // Extract file name from the URL
@@ -104,6 +87,16 @@ export default function WelcomeScreen(){
                 return
             }
             if(typeof image !== 'string'){
+                
+                const user = {
+                    username: name,
+                    email: email,
+                    password: password
+                  }
+        
+                  // Serialize the object into a JSON string
+                  storage.set(`${user.email} login`, JSON.stringify(user))
+                  console.log('User login info saved successfully via email')
                 return
             }
             const imagePath = await saveImageToLocal(image)
@@ -130,12 +123,11 @@ export default function WelcomeScreen(){
             const user = {
                 username: name,
                 mobile: mobileNo,
-                password: password,
                 image: imagePath,
               }
     
               // Serialize the object into a JSON string
-             storage.set(`${user.mobile} login`, JSON.stringify(`${user.mobile} login`))
+             storage.set(`${user.mobile} login`, JSON.stringify(user))
           console.log('User login info saved successfully via mobileNo')
         }
       }
@@ -143,11 +135,11 @@ export default function WelcomeScreen(){
      const enterAppHomeScreen = async()=>{
              setLoadingIndicator(true)
              await setCompleteSignUp()
-             await clearLocalStorage()
-             await setLoginDataLocally()
-             console.log('Local data cleared successfully')
-             router.push('/(home)/explore')
+             setLoginDataLocally()
+             setLoadingIndicator(false)
+             router.replace('/(home)/explore')
      }
+
 
     return(
         <SafeAreaView style={{flex: 1, backgroundColor:'white'}}>

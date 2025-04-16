@@ -1,41 +1,40 @@
 import { useEffect, useState } from "react";
-import { View, Image, SafeAreaView, FlatList, Text, Pressable, Modal, ActivityIndicator} from "react-native";
+import { View, Image, FlatList, Text, Pressable, Modal, ActivityIndicator} from "react-native";
 import { Entypo, MaterialIcons, FontAwesome6, AntDesign} from "@expo/vector-icons";
-import { storage } from "./signIn";
-import { signIn } from 'aws-amplify/auth'
+import { storage } from "../(home)/_layout";
 import BottomSheet, {BottomSheetView} from '@gorhom/bottom-sheet';
 import { StyleSheet } from "react-native";
 import { router } from "expo-router";
+import { supabase } from "@/src/Providers/supabaselib";
+import { userAuthSuccess, anonymousUserAuthSuccess } from "@/src/redux/features/userAuthSlice";
+import { useAppDispatch } from "@/src/redux/app/hooks";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function AutoSignIn(){
     const [allLogInData, setAllLogInData] = useState<LoginData[]>([])
     const [openBottomSheet, setOpenBottomSheet] = useState(false)
     const [showModal, setShowModal] = useState(false)
     const [showDelText, setShowDelText] = useState(false)
-   
+    const dispatch = useAppDispatch()
     
 
     type LoginData = {
         username: string,
         email: string,
         mobile: string,
-        image: string,
+        image: string | null,
         password: string
     }
-
 
     useEffect(()=>{
         getAutoSignInKeysAndValues()
     }, [])
 
-    
-
     const getAutoSignInKeysAndValues = async()=>{
         try{
         // getting all keys
         const keys = storage.getAllKeys()
-        const filterKeys = keys.filter((key)=> key.includes('login'))
-        const loginObjData = filterKeys.map((key)=>{
+        const loginObjData = keys.map((key)=>{
         // Deserialize the JSON string into an object
         const jsonUser = storage.getString(key) 
         
@@ -54,29 +53,49 @@ export default function AutoSignIn(){
 
     const signInUser = async (data: LoginData)=>{
         setShowModal(true)
-        await signIn({
-        username: data.email || data.mobile,
-        password: data.password,
-        })
-        console.log('User signed in successfully : ')
-        setShowModal(false)
-        router.push('/(home)/explore')
+        if(data.email){
+             const { data: {session} } = await supabase.auth.signInWithPassword({
+                                        email: data.email,
+                                        password: data.password,
+                            })
+                    if(session){
+                        console.log('User signed in successfully : ')
+                        setShowModal(false)
+                        dispatch(userAuthSuccess(session.user.id))
+                        dispatch(anonymousUserAuthSuccess(null))
+                        router.replace('/(home)/explore')
+                    }
+        }else{
+        const { data: signInMobile, error } = await supabase.auth.signInWithOtp({
+                                phone: data.mobile,
+                              })
+                              if(error){
+                                  console.log('Error signing in with otp', error.message)
+                                  return
+                              }
+                              if(signInMobile){
+                                  console.log('User login in process : ', data)
+                                  router.push({
+                                    pathname: '/(auth)/confirmCode',
+                                    params: {mobileNo: data.mobile, fromSignIn: 'true'}
+                                  })
+                                 setShowModal(false)
+                              }
+        }
     }
+
 
     const deleteLogInData = ()=>{
           // getting all keys
           const keys = storage.getAllKeys()
-          const filterKeys = keys.filter((key)=> key.includes('login'))
-          filterKeys.forEach((key)=>{
+          keys.forEach((key)=>{
             storage.delete(key)
         })
         setShowDelText(false)
         setOpenBottomSheet(false)
-        router.push({
-            pathname: '/(auth)/signIn',
-            params: {noNav: 'true'}
-        })
+        router.back()
     }
+
 
 
     return(
@@ -91,7 +110,9 @@ export default function AutoSignIn(){
                         
                         return(
                             <Pressable onPress={()=> signInUser(item)} style={{flexDirection:"row", alignItems:'center', backgroundColor:'white', padding: 15, borderRadius: 15, elevation: 3, shadowColor: 'gray'}}>
-                                <Image source={{uri : item.image}} style={{width: 60, height: 60, borderRadius: 60, marginRight: 10}}/>
+                                {
+                                    item.image?  <Image source={{uri : item.image}} style={{width: 60, height: 60, borderRadius: 60, marginRight: 10}}/> :  <View style={{width: 60, height: 60, borderRadius: 60, marginRight: 10, backgroundColor:'rgba(224,224,224,0.5)'}}/>
+                                }
                                 <View>
                                     <Text style={{fontSize: 16, fontWeight:'600'}}>{item.username}</Text>
                                     <Text style={{color:'#4C4C4C'}}>{item.email || item.mobile}</Text>

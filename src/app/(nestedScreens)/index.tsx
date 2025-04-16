@@ -1,4 +1,4 @@
-import { View, Text, Alert, Image, useWindowDimensions, FlatList, Pressable, Platform, StatusBar} from 'react-native'
+import { View, Text, Alert, Image, useWindowDimensions, FlatList, Pressable } from 'react-native'
 import React, { useEffect, useRef, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AntDesign, Ionicons, FontAwesome5 } from '@expo/vector-icons'
@@ -262,7 +262,7 @@ const enableMultipleSelection = (media: Assets)=>{
             }} horizontal showsHorizontalScrollIndicator={false}/>
        
       <View style={{flex: 1}}>
-      <View style={{flexDirection:'row', alignItems:'center', padding: 15, backgroundColor:'rgba(0,0,0,0.9)'}}>
+      <View style={{flexDirection:'row', alignItems:'center', paddingVertical: 10, paddingHorizontal: 15, backgroundColor:'rgba(0,0,0,0.9)'}}>
               <AntDesign onPress={()=> router.push('/(home)/explore')} name="close" size={30} color="white" style={{marginRight: 20}}/>
               <Text style={{marginRight:'auto', color:'white', fontSize: 20, fontWeight:'800'}}>New Post</Text>
               <Text onPress={goToEditScreen} style={{color: 'blue', fontSize: 16, fontWeight: '600'}}>Next</Text>

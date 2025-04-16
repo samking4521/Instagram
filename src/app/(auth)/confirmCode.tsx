@@ -1,20 +1,15 @@
 import { useState, useEffect, useRef, useMemo } from "react"
-import { SafeAreaView, View, Text, TextInput, Pressable, Keyboard, ScrollView, StyleSheet, ActivityIndicator, Modal} from "react-native"
+import { View, Text, TextInput, Pressable, Keyboard, Alert, ScrollView, StyleSheet, ActivityIndicator, Modal} from "react-native"
 import { AntDesign, MaterialIcons } from '@expo/vector-icons'
-import { confirmSignUp, resendSignUpCode, signIn, getCurrentUser, signOut} from "aws-amplify/auth";
-import { router, useLocalSearchParams } from "expo-router"
+import { router, useLocalSearchParams, useNavigation } from "expo-router"
 import BottomSheet, {BottomSheetView} from '@gorhom/bottom-sheet';
-import type { Schema } from '../../../amplify/data/resource'
-import { generateClient } from 'aws-amplify/data'
-import { storage } from "./signIn";
-import { useAppSelector, useAppDispatch } from "@/src/redux/app/hooks"
-import { userAuthSuccess } from "@/src/redux/features/userAuthSlice";
-
-const client = generateClient<Schema>()
-// import LinearGradient from 'react-native-linear-gradient';
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAppDispatch } from "@/src/redux/app/hooks"
+import { userAuthSuccess, anonymousUserAuthSuccess } from "@/src/redux/features/userAuthSlice";
+import { supabase } from "@/src/Providers/supabaselib";
+import { storage } from "../(home)/_layout";
 
 export default function ConfirmCode(){
-    const userAuth = useAppSelector((state) => state.auth.userAuth)
     const dispatch = useAppDispatch()
     const [showConfirmCodeText, setShowConfirmCodeText] = useState(false)
     const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -24,35 +19,24 @@ export default function ConfirmCode(){
     const [showLoadingIndicator, setShowLoadingIndicator] = useState(false)
     const [codeResent, setCodeResent] = useState(false)
     const labelRef = useRef<TextInput>(null)
-    const { mobileNo, email, password, resendConfirmCode } = useLocalSearchParams()
+    const { mobileNo, email, password, resendConfirmCode, fromSignIn } = useLocalSearchParams()
     const snapPoints = useMemo(()=> ['70%'], [])
     const bottomSheetRef = useRef<BottomSheet>(null)
+    const navigation = useNavigation()
 
+    type UserObj = {
+        name: string,
+        password: string,
+        username: string,
+        dob: string,
+    }
+     
     useEffect(()=>{
         if(resendConfirmCode){
             resendConfirmationCode()
             setCodeResent(true)
         }
     }, [])
-
-         const storeDataLocally = (val: boolean)=>{
-                if(email){
-                    if(typeof email == 'string' ){
-                        storage.set(`${email} confirmed`, val)
-                    }
-                }else{
-                    if(typeof mobileNo == 'string' ){
-                        storage.set(`${mobileNo} confirmed`, val)
-                    }
-                }
-               
-            }
-
-    useEffect(()=>{
-        storeDataLocally(false)
-        console.log(`${email || mobileNo} confirmed false`)
-    }, [])
-
 
     useEffect(() => {
         const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -71,129 +55,252 @@ export default function ConfirmCode(){
 
       const ConfirmCode = async ()=>{
         Keyboard.dismiss()
-        if(confirmCode.length >=6){
+        if(confirmCode.length >= 6){
             setShowLoadingIndicator(true)
             confirmationCode()
         }else if(confirmCode.length == 0){
             setShowConfirmCodeErrorText('zero')
         }else{
-           setShowConfirmCodeErrorText('less than 6')
+           setShowConfirmCodeErrorText('less_than_6')
         }
            
       }
 
+    
+
       const AutoSignInUser = async()=>{
         try{
+           
             if(email){
                 if(typeof email === 'string' && typeof password === 'string'){
-                        const { nextStep } = await signIn({
-                            username: email,
-                            password: password,
-                          });
-                          console.log('nextStep : ', nextStep)
-                          if(nextStep.signInStep === 'DONE'){
-                            console.log('Successfully signed in.');
-                          }
-                        const { userId } = await getCurrentUser();
-                        dispatch(userAuthSuccess(userId))
-                             // Create User model and add sub id
-                        const createUserSub = await client.models.User.create({
-                            sub: userId,
-                            password: password,
-                            email: email
-                          })
-                       console.log('User sub created successfully : ', createUserSub )
-                      
-                       await storeDataLocally(true)
-                       console.log(`${email} confirmed true`)
-                       router.push({
-                            pathname: '/(auth)/enterName',
-                            params: {email, password}
-                        })
-                        setShowLoadingIndicator(false)
-            }else{
-                if(typeof mobileNo === 'string' && typeof password === 'string'){
-                        const { nextStep } = await signIn({
-                            username: mobileNo,
-                            password: password,
-                            });
-                            console.log('nextStep : ', nextStep)
-                            if(nextStep.signInStep === 'DONE'){
-                            console.log('Successfully signed in.');
+                    const { data: {session}, error } = await supabase.auth.signInWithPassword({
+                        email,
+                        password
+                      })
+                         if(error){
+                             console.log('error signing in user : ', error, error.message, error.name)
+                         }
+                         else{
+                            if(session){
+                            console.log('Successfully signed in : ', session.user);
+                            dispatch(userAuthSuccess(session.user.id))
+                            dispatch(anonymousUserAuthSuccess(null))
+                                   const { data } = await supabase
+                                  .from('User')
+                                  .insert({ 
+                                     email: email,
+                                     password: password,
+                                     last_login: getLocalDateTimeString()
+                                   })
+                                  .select()
+                                  if(data)
+                                     if(data[0]){
+                                        console.log('User Model Created successfully : ', data)
+                                        router.push({
+                                            pathname: '/(auth)/enterName',
+                                            params: {email, password}
+                                        })
+                                        setShowLoadingIndicator(false)
+                                     }
                             }
-                        const { userId } = await getCurrentUser();
-                        dispatch(userAuthSuccess(userId))
-                                // Create User model and add sub id
-                        const createUserSub = await client.models.User.create({
-                            sub: userId,
-                            password: password,
-                            mobileNo: mobileNo
-                            })
-                        console.log('User sub created successfully : ', createUserSub )
-                        await storeDataLocally(true)
-                        console.log(`${mobileNo} confirmed true`)
-                        router.push({
-                            pathname: '/(auth)/enterName',
-                            params: {mobileNo, password}
-                        })
-                        setShowLoadingIndicator(false)
-                    }}}
-        }catch(e){
-            if(e instanceof Error){
-                console.log('Error signing user in ', e.message)
-            }
+                        }
+                     }
+            }                
+           
+        }catch(error){
+            if(error instanceof Error)
+            console.log('Error signing user in: ', error.message)
+            setShowConfirmCodeErrorText('network_error')
+            setShowLoadingIndicator(false)
         }
+            
       }
+
+
+      function getLocalDateTimeString() {
+        const now = new Date();
+        return now.toLocaleString(); 
+      }
+      
+       const showCompleteSignUpAlert = (userObj: UserObj) => {
+              Alert.alert(
+                'Complete Sign up',
+                'You already have an account, proceed to complete your profile settings.',
+                [
+                  {
+                    text: 'Complete Sign-up',
+                    onPress: () => router.push({
+                      pathname: '/(auth)/enterName',
+                      params: {mobileNo, userData: userObj?.name}
+                    })
+                  },
+                  {
+                    text: 'Cancel',
+                    style: 'cancel',
+                  },
+                ],
+                { cancelable: true }
+              );
+            };
+      
+            const goToSignUpPhone = () => {
+                Alert.alert(
+                  'Proceed To Sign Up',
+                  "Before signing in, please complete your profile to continue.", 
+                  [
+                    {
+                      text: 'Proceed To Sign-up',
+                      onPress: () => router.push({
+                        pathname: '/(auth)/enterName',
+                        params: {mobileNo}
+                      })
+                    },
+                    {
+                      text: 'Cancel',
+                      style: 'cancel',
+                    },
+                  ],
+                  { cancelable: true }
+                );
+              };
+        
 
 
       const confirmationCode = async()=>{
-         try{
-               if(email){
-                    if(typeof email !== 'string'){
-                        return
-                    }
-                    // Confirm sign up with the OTP received
-                const { nextStep: confirmSignUpNextStep } = await confirmSignUp({
-                    username: email,
-                    confirmationCode: confirmCode,
-                });
-
-                if (confirmSignUpNextStep.signUpStep === 'DONE') {
-                    console.log(`SignUp Complete`);
-                    AutoSignInUser()
-                    }
+          try{
+            if(email){
+                if(typeof email !== 'string'){
+                    return
+                }
+               // Confirm sign up with the OTP received
+               const { data: {session}, error } = await supabase.auth.verifyOtp({ email, token: confirmCode, type: 'email'})
+               if(error){
+                    console.log('Error confirming code : ', error.message)
+                    if(error.code == 'otp_expired'){
+                        setShowConfirmCodeErrorText('invalid_code')
+                        setShowLoadingIndicator(false)
+                    }  
                }else{
-                    if(typeof mobileNo !== 'string'){
-                        return
-                    }
-
-                    // Confirm sign up with the OTP received
-                const { nextStep: confirmSignUpNextStep } = await confirmSignUp({
-                    username: mobileNo,
-                    confirmationCode: confirmCode,
-                });
-    
-                if (confirmSignUpNextStep.signUpStep === 'COMPLETE_AUTO_SIGN_IN') {
-                    console.log(`SignUp Complete`);
-                    AutoSignInUser()
-                }
+                    if(session){
+                        console.log(`Email Verify Complete`, session.user);
+                        AutoSignInUser()
+                 }
                }
-            
-         }catch(e){
-            if(e instanceof Error){
-                console.log('Error confirming code', e.name)
-                setShowLoadingIndicator(false)
-                if(e.name == 'CodeMismatchException'){
-                    setShowConfirmCodeErrorText('Invalid code')
-                }else{
-                    setShowConfirmCodeErrorText('network error')
+           }else{
+                if(typeof mobileNo !== 'string'){
+                    return
                 }
-                
-            }
-         }
-         
-      }
-   
+                // Confirm sign up with the OTP received
+                const { data: {session, user}, error } = await supabase.auth.verifyOtp({ phone: mobileNo, token: confirmCode, type: 'sms'})
+                        if(error){
+                            console.log('Error confirming code : ', error.message)
+                            if(error.code == 'otp_expired'){
+                                setShowConfirmCodeErrorText('invalid_code')
+                                setShowLoadingIndicator(false)
+                            }  
+                        }else{
+                                if(session){
+                                    console.log(`User signed in success via phone : `, session.user, user);
+                                    dispatch(userAuthSuccess(session.user.id))
+                                    dispatch(anonymousUserAuthSuccess(null))
+                                    if(fromSignIn == 'true'){
+                                        const { data } = await supabase
+                                        .from('User')
+                                        .select()
+                                        .eq('id', session.user.id)
+                                        if(data){
+                                            if(data.length == 0){
+                                                        const { data, error } = await supabase
+                                                        .from('User')
+                                                        .insert({ signInStatus: false
+                                                        }).select()
+                                                        if(data){
+                                                            if(data[0]){
+                                                                setShowLoadingIndicator(false)
+                                                                goToSignUpPhone()
+                                                            }
+                                                        }
+                                                       
+                                                        
+                                            }else{
+                                                if(data[0].signInStatus){
+                                                    router.replace('/(home)/explore')
+                                                }else{
+                                                   
+                                                    setShowLoadingIndicator(false)
+                                                    showCompleteSignUpAlert(data[0])
+                                                }
+                                            }
+                                           
+                                        }
+                                    }else{
+                                        const { data } = await supabase
+                                        .from('User')
+                                        .select()
+                                        .eq('id', session.user.id)
+                                        if(data){
+                                            if(data[0].signInStatus){
+                                                router.replace('/(home)/explore')
+                                            }else{
+                                                const { data: UserObjExists } = await supabase
+                                                .from('User')
+                                                .select()
+                                                .eq('id', session.user.id)
+                                                if(UserObjExists){
+                                                    const { data, error } = await supabase
+                                                    .from('User')
+                                                    .update({ mobile: mobileNo,
+                                                        last_login: getLocalDateTimeString()
+                                                     })
+                                                    .eq('id', session.user.id)
+                                                    .select()
+                                                  
+                                              if(data)
+                                                 if(data[0]){
+                                                    console.log('User Model Updated successfully : ', data)
+                                                    router.push({
+                                                        pathname: '/(auth)/enterName',
+                                                        params: {mobileNo, userData: JSON.stringify(UserObjExists[0])}
+                                                    })
+                                                    setShowLoadingIndicator(false)
+                                    
+                                        }
+                                                }else{
+                                                    const { data, error } = await supabase
+                                                    .from('User')
+                                                    .insert({ mobile: mobileNo,
+                                                        last_login: getLocalDateTimeString()
+                                                     })
+                                                    .select()
+                                        
+                                              
+                                              if(data)
+                                                 if(data[0]){
+                                                    console.log('User Model Created successfully : ', data)
+                                                    router.push({
+                                                        pathname: '/(auth)/enterName',
+                                                        params: {mobileNo}
+                                                    })
+                                                    setShowLoadingIndicator(false)
+                                    
+                                        }
+                                                }
+                                            }
+                                        }
+                                        
+                                       
+                                    }
+                                   
+                            }
+                        }
+                }
+          }catch(error){
+                console.log('Error confirming code : ', error)
+                setShowConfirmCodeErrorText('network_error')
+                setShowLoadingIndicator(false)
+          }         
+ }
+ 
       const updateConfirmCode = (val: string)=>{
             setConfirmCode(val)
             if(showConfirmCodeErrorText){
@@ -207,61 +314,116 @@ export default function ConfirmCode(){
       }
 
       const resendConfirmationCode = async ()=>{
-        if(email){
-            if(typeof email !== 'string'){
-                return
+        try{
+            if(email){
+                if(typeof email !== 'string'){
+                    return
+                }
+                const { data } = await supabase.auth.resend({
+                    type: 'signup',
+                    email
+                  })
+                    console.log('code resent: ', data)
+                    setCodeResent(true)
+                    setOpenBottomSheet(false)
+            }else {
+                if(typeof mobileNo !== 'string'){
+                    return
+                }
+                const { data } = await supabase.auth.resend({
+                    type: 'sms',
+                    phone: mobileNo
+                  })
+                
+                    console.log('code resent: ', data)
+                    setCodeResent(true)
+                    setOpenBottomSheet(false)
             }
-            const { destination, deliveryMedium } = await resendSignUpCode({
-                username: email,
-            });
-            console.log(`A confirmation code has been resent to ${destination}.`);
-            console.log(`Please check your ${deliveryMedium} for the code.`);
-            setCodeResent(true)
-            setOpenBottomSheet(false)
-        }else{
-            if(typeof mobileNo !== 'string'){
-                return
+        }catch(error){
+            if(error instanceof Error){
+                console.log('Error resending signup code : ', error.message)
+                setOpenBottomSheet(false)
+                setShowConfirmCodeErrorText('resend_error')
             }
-            const { destination, deliveryMedium } = await resendSignUpCode({
-                username: mobileNo,
-            });
-            console.log(`A confirmation code has been resent to ${destination}.`);
-            console.log(`Please check your ${deliveryMedium} for the code.`);
-            setCodeResent(true)
-            setOpenBottomSheet(false)
         }
-      
         
       }
 
       const goToSignUp = ()=>{
+        const keys = storage.getAllKeys()
          if(email){
-            router.push('/(auth)/signUp')
+            navigation.reset({
+                index: keys[0]? 2 : 1,
+                routes: keys[0]?
+                 [ { name: 'autoSignIn' as never },
+                    { name: 'signIn' as never },
+                    { name: 'signUp' as never }] 
+                    
+                    :
+                    
+                 [
+                    { name: 'signIn' as never },
+                    { name: 'signUp' as never }
+               ] // your stack screen name
+            });
          }else{
-            router.push('/(auth)/signUpEmail')
+            navigation.reset({
+                index: keys[0]? 2 : 1,
+                routes: keys[0]?
+                 [ { name: 'autoSignIn' as never },
+                    { name: 'signIn' as never },
+                    { name: 'signUpEmail' as never }] 
+                    
+                    :
+                    
+                 [
+                    { name: 'signIn' as never },
+                    { name: 'signUpEmail' as never }
+               ] // your stack screen name
+            });
          }
       }
 
       const changeMedium = ()=>{
+        const keys = storage.getAllKeys()
         if(email){
-            router.push('/(auth)/signUpEmail')
+            navigation.reset({
+                index: keys[0]? 2 : 1,
+                routes: keys[0]?
+                 [ { name: 'autoSignIn' as never },
+                    { name: 'signIn' as never },
+                    { name: 'signUpEmail' as never }] 
+                    
+                    :
+                    
+                 [
+                    { name: 'signIn' as never },
+                    { name: 'signUpEmail' as never }
+               ] // your stack screen name
+            });
         }else{
-            router.push('/(auth)/signUp')
+            navigation.reset({
+                index: keys[0]? 2 : 1,
+                routes: keys[0]?
+                [ { name: 'autoSignIn' as never },
+                   { name: 'signIn' as never },
+                   { name: 'signUp' as never }] 
+                   
+                   :
+                   
+                [
+                   { name: 'signIn' as never },
+                   { name: 'signUp' as never }
+              ] // your stack screen name
+            });
+           
         }
       }
 
     return(
-    //     <LinearGradient
-    //     colors={['lightgreen', 'lightcoral', 'skyblue']} // Array of colors
-    //     start={{ x: 0, y: 0 }} // Start point (top-left)
-    //     end={{ x: 1, y: 1 }}   // End point (bottom-right)
-    //     style={{flex: 1}}
-    //   >
-      
         <SafeAreaView style={styles.container}>
            <ScrollView keyboardShouldPersistTaps='handled' showsVerticalScrollIndicator={false} contentContainerStyle={{flex: 1}}>
             <AntDesign onPress={()=> router.back()} name="arrowleft" size={24} color="black" />
-            
             <View style={{marginTop: 10}}>
                  <Text style={styles.headerText}>Enter the confirmation code?</Text>
                  <Text style={styles.headerDescText}>{codeResent? `A new 6-digit verification code has been resent to your ${email? 'email' : 'text message'} at ${email || mobileNo}. Please check your ${email? 'email' : 'text message'} and enter the code to proceed.` : `To confirm your account enter the 6-digit code we sent via ${email? 'email' : 'text message'} to ${mobileNo || email}`}</Text>
@@ -275,7 +437,7 @@ export default function ConfirmCode(){
                   { showConfirmCodeErrorText && <AntDesign name="exclamationcircleo" size={24} color="red" /> }
 
                  </Pressable>
-                   { showConfirmCodeErrorText && <Text style={{color:"red", letterSpacing: 0.5}}>{showConfirmCodeErrorText == 'zero'? `Code is required. Check your ${email? 'email': 'text message'} to find the code` : showConfirmCodeErrorText == 'less than 6'? 'Confirmation code must be at least 6 characters long' : showConfirmCodeErrorText == 'network'? 'Something went wrong! Check your internet connection or try again later' : showConfirmCodeErrorText == 'Invalid code'? 'The confirmation code you entered is incorrect. Please try again.' : 'Something went wrong! Please check your internet connection and try again later.' }</Text>}
+                   { showConfirmCodeErrorText && <Text style={{color:"red", letterSpacing: 0.5}}>{showConfirmCodeErrorText == 'zero'? `Code is required. Check your ${email? 'email': 'text message'} to find the code` : showConfirmCodeErrorText == 'less_than_6'? 'Confirmation code must be at least 6 characters long' : showConfirmCodeErrorText == 'invalid_code'? 'Invalid or expired confirmation code. Ensure the code is correct or try resending a new one.' : showConfirmCodeErrorText == 'resend_error'? 'Error resending confirmation code. Please check your network and try again' : 'Something went wrong! Please check your internet connection and try again later.' }</Text>}
                 </View>
 
             <View style={styles.pressableBtnCont}> 
