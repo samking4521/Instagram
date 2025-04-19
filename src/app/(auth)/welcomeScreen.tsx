@@ -91,7 +91,8 @@ export default function WelcomeScreen(){
                 const user = {
                     username: name,
                     email: email,
-                    password: password
+                    password: password,
+                    image: undefined
                   }
         
                   // Serialize the object into a JSON string

@@ -1,16 +1,11 @@
 import { AntDesign, Entypo } from '@expo/vector-icons'
 import React from 'react'
 import { View, Text, Pressable, Modal } from 'react-native'
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
-import { useFonts } from 'expo-font'
-import { navigate } from 'expo-router/build/global-state/routing'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 
 export default function PromptLoginModal({ showLoginPrompt, setShowLoginPrompt }: { showLoginPrompt: boolean, setShowLoginPrompt: React.Dispatch<React.SetStateAction<boolean>>} ){
-   useFonts({
-       'Pacifico-Regular': require('../../assets/fonts/Pacifico-Regular.ttf'),
-      });
-    
+
       const navigateToLoginOrSignUp= ()=>{
             router.replace('/(auth)/signIn')
       }

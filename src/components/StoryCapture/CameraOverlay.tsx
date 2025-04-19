@@ -44,7 +44,7 @@ export default function CameraOverlay({ cameraRef, flash, setFlash, timer, setSh
     <>
     <View style={{position: 'absolute', width: '100%', height: '100%', paddingTop: StatusBar.currentHeight,}}>
                      <View style={{ paddingHorizontal: 30,  flexDirection:'row', justifyContent:'space-between'}}>
-                       <AntDesign onPress={()=> router.push('/(home)/post')} name="close" size={30} color="white" />
+                       <AntDesign onPress={()=> router.back()} name="close" size={30} color="white" />
                        <MaterialCommunityIcons onPress={()=> setFlash(!flash)} name={flash? 'flash': "flash-off"} size={30} color="white" />
                        <AntDesign name="setting" size={30} color="white" />     
                     </View>

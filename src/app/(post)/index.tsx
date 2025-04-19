@@ -26,6 +26,7 @@ export default function Gallery(){
   const assetsFlatListRef = useRef<GestureFlatlist>(null)
   const outerFlatlistRef = useRef<FlatList>(null)
 
+
   useEffect(() => {
     requestPermission();
   }, []);
@@ -123,8 +124,11 @@ const enableMultipleSelection = (media: Assets)=>{
 
   
   useEffect(() => {
+    if(!permission){
+       return
+    }
     getRecentMedia();
-  }, []);
+  }, [permission]);
 
   const processMultipleImages = (imgObj: Assets)=>{
     if(showMultiplePicker){
@@ -189,7 +193,7 @@ const enableMultipleSelection = (media: Assets)=>{
    const goToEditScreen = ()=>{
       const selectImgs = selectedImages.length >= 1 ? selectedImages : mainImg ? [...selectedImages, mainImg] : selectedImages;
       router.push({
-        pathname: '/(nestedScreens)/PostPreview',
+        pathname: '/(post)/PostPreview',
         params: {media: JSON.stringify(selectImgs), imgResizeMode: imgResizeMode.toString(), galleryMedia: JSON.stringify(assets[0])}})
    
    }
@@ -228,12 +232,12 @@ const enableMultipleSelection = (media: Assets)=>{
     console.log('Tesla', index)
       if (index == 1){
          router.push({
-          pathname: '/(nestedScreens)/LiveCamera',
+          pathname: './LiveCamera',
           params: {mode: 'STORY', modeIndex: 1}
          })
       }else if(index == 2){
          router.push({
-          pathname: '/(nestedScreens)/LiveCamera',
+          pathname: './LiveCamera',
           params: {mode: 'REELS', modeIndex: 2}
          })
       }else{
@@ -255,7 +259,7 @@ const enableMultipleSelection = (media: Assets)=>{
     <SafeAreaView style={{flex: 1, backgroundColor:'rgba(0,0,0,0.9)'}}>
         <ExpoStatusBar style='light' backgroundColor='black' />
        
-           <FlatList ref={flatlistRef} contentContainerStyle={{paddingRight: 150}} style={{ position:'absolute', zIndex: 10, left: cameraModeIndex == 0? 60/100 * width : cameraModeIndex == 1? 55/100 * width : 50/100 * width , top: 95/100 * height, backgroundColor: 'rgba(0,0,0,0.9)', padding: 15, borderRadius: 20, width: 50/100 * width}} data={switchScreens} renderItem={({item, index})=> {
+           <FlatList ref={flatlistRef} contentContainerStyle={{paddingRight: 150}} style={{ position:'absolute', zIndex: 1, left: cameraModeIndex == 0? 60/100 * width : cameraModeIndex == 1? 55/100 * width : 50/100 * width , top: height - 90, backgroundColor: 'rgba(0,0,0,0.9)', padding: 15, borderRadius: 20, width: 50/100 * width}} data={switchScreens} renderItem={({item, index})=> {
             return(
                 <Text onPress={()=> processCapture(index)} style={{ fontWeight: '800', color: index == cameraModeIndex? 'white' : 'rgba(255,255,255, 0.3)', fontSize: 16, marginRight: 15}}>{item}</Text>
             )
@@ -263,7 +267,7 @@ const enableMultipleSelection = (media: Assets)=>{
        
       <View style={{flex: 1}}>
       <View style={{flexDirection:'row', alignItems:'center', paddingVertical: 10, paddingHorizontal: 15, backgroundColor:'rgba(0,0,0,0.9)'}}>
-              <AntDesign onPress={()=> router.push('/(home)/explore')} name="close" size={30} color="white" style={{marginRight: 20}}/>
+              <AntDesign onPress={()=> router.back()} name="close" size={30} color="white" style={{marginRight: 20}}/>
               <Text style={{marginRight:'auto', color:'white', fontSize: 20, fontWeight:'800'}}>New Post</Text>
               <Text onPress={goToEditScreen} style={{color: 'blue', fontSize: 16, fontWeight: '600'}}>Next</Text>
           </View>
@@ -313,7 +317,7 @@ const enableMultipleSelection = (media: Assets)=>{
          <Pressable onPress={enableMultipleImgSelection} style={{width: 35, height: 35, borderRadius: 35, backgroundColor: selectorIconColor? 'white' : '#4C4C4C', justifyContent:'center', alignItems:'center'}}>
             <Ionicons name="copy" size={20} color={selectorIconColor? 'blue' : 'white'} />
          </Pressable>
-        <Pressable onPress={()=> router.push({ pathname:'/(nestedScreens)/LiveCamera',
+        <Pressable onPress={()=> router.push({ pathname:'./LiveCamera',
           params: {uri: assets[0].uri}
         })} style={{marginLeft: 10, width: 35, height: 35, borderRadius: 35, backgroundColor: '#4C4C4C', justifyContent:'center', alignItems:'center'}}>
             <Ionicons name="camera-outline" size={20} color="white" />
@@ -338,7 +342,7 @@ const enableMultipleSelection = (media: Assets)=>{
                   source={{ uri: item.uri }}
                   style={{ width: width/4, height: 85 }}
                 />
-                  {  item == mainImg && <View style={{zIndex: 1, backgroundColor: 'rgba(255,255,255, 0.5)', width: width/4, height: 100, position:'absolute' }}></View>}
+                  {  item == mainImg && <View style={{zIndex: 1, backgroundColor: 'rgba(255,255,255, 0.5)', width: width/4, height: 85, position:'absolute' }}></View>}
                   { showMultiplePicker && <View style={{ zIndex: 2, position:'absolute', top: 2, left: width/4 - 30, width: 25, height: 25, borderRadius: 25, borderColor: 'white', borderWidth: 2, justifyContent:'center', alignItems:'center', backgroundColor: selectedImages.includes(item)? 'blue' : 'rgba(255,255,255,0.4)' }}>
                   { selectedImages.includes(item) && <Text style={{color:'white', fontWeight:'600', fontSize: 14}}>{selectedImages.indexOf(item) + 1}</Text>}
   

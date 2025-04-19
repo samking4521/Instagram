@@ -1,10 +1,10 @@
 import { View, Text, SafeAreaView, Image, useWindowDimensions, FlatList, Pressable, Modal, ViewToken, StatusBar, TextInput} from 'react-native'
-import React, {  useCallback, useRef, useState, useEffect } from 'react'
+import React, {  useRef, useState } from 'react'
 import { AntDesign, Ionicons, FontAwesome6, MaterialCommunityIcons, Octicons } from '@expo/vector-icons'
 import { useLocalSearchParams } from 'expo-router'
 import Video from 'react-native-video';
 import { router } from 'expo-router';
-import EditSingleMedia from '@/src/components/editSingleMedia';
+import EditSingleMedia from '../../components/editSingleMedia';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 
 export default function PostPreview(){
@@ -25,7 +25,8 @@ export default function PostPreview(){
    const [openGalleryModal, setOpenGalleryModal] = useState(false)
    const [imageFilterModal, setImageFilterModal] = useState<string | null>(null)
    const [openMusicBottomSheet, setOpenMusicBottomSheet] = useState(false)
-   const flatListRef = useRef<FlatList>(null)   
+   const flatListRef = useRef<FlatList>(null)  
+   
 
      // Define the viewability configuration
   const viewabilityConfig = useRef({
@@ -51,6 +52,7 @@ export default function PostPreview(){
 
      // Callback function to handle viewable items change
   const onViewableItemsChanged = ({ viewableItems } : {viewableItems: ViewToken[]}) => {
+   
     setCurrentViewableMedia(viewableItems[0])
     // You can perform actions based on the currently visible items here
   }

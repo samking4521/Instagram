@@ -1,10 +1,10 @@
 import { View, Image, Modal, Text } from 'react-native'
 import { Redirect, useLocalSearchParams } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { Tabs } from "expo-router";
+import { Tabs, router } from "expo-router";
 import { Foundation, Feather, Octicons, MaterialCommunityIcons, FontAwesome} from "@expo/vector-icons";
 import { useAppSelector, useAppDispatch } from '@/src/redux/app/hooks'
-import { userAuthSuccess, anonymousUserAuthSuccess, noUserAuthSuccess } from '@/src/redux/features/userAuthSlice'
+import { userAuthSuccess, anonymousUserAuthSuccess, noUserAuthSuccess, userOnboardComplete } from '@/src/redux/features/userAuthSlice'
 import changeNavigationBarColor from 'react-native-navigation-bar-color';
 import { supabase } from '@/src/Providers/supabaselib'
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,7 +17,7 @@ export const storage = new MMKV()
      const showModal = useAppSelector((state) => state.auth.showModal)
      const anonymousUser = useAppSelector((state) => state.auth.anonymousUserAuth)
      const [storageLoginData, setStorageLoginData] = useState<boolean | null>(null)
-     const [signInStatus, setSignInStatus] = useState<string | null>(null)
+     const signInStatus = useAppSelector((state) => state.auth.signInStatus)
      const dispatch = useAppDispatch()
      
     
@@ -29,7 +29,7 @@ export const storage = new MMKV()
          if(session){
             if(session.user.is_anonymous){
               dispatch(anonymousUserAuthSuccess(session.user.id))
-              setSignInStatus('true')
+              dispatch
             }
             else{
               dispatch(userAuthSuccess(session.user.id))
@@ -40,10 +40,10 @@ export const storage = new MMKV()
                 if(loginDataKeys[0]){
                    dispatch(noUserAuthSuccess())
                     setStorageLoginData(true)
-                    setSignInStatus('true')
+                    dispatch(userOnboardComplete('true'))
                 }else{
                   signInAnonymousUser()
-                  setSignInStatus('true')
+                  dispatch(userOnboardComplete('true'))
                 }
               })()
          }
@@ -93,10 +93,10 @@ export const storage = new MMKV()
             if(data){
                if(data[0].signInStatus){
                    console.log('set true')
-                   setSignInStatus('true')
+                   dispatch(userOnboardComplete('true'))
                }else{
                 console.log('set false')
-                setSignInStatus('false')
+                dispatch(userOnboardComplete('false'))
                }
             }
           }
@@ -134,12 +134,17 @@ export const storage = new MMKV()
 
   
 
-      if((userAuth || anonymousUser) && signInStatus == 'true'){
+      if((userAuth || anonymousUser) && signInStatus !== 'false'){
         return(
                     <Tabs screenOptions={{ headerShown: false, tabBarShowLabel: false, animation: 'shift'}}>
                         <Tabs.Screen name='explore' options={{ tabBarIcon: ()=> <Foundation name="home" size={28} color={'black'} />}}/>
                         <Tabs.Screen name='search' options={{ tabBarIcon: ()=> <Feather name="search" size={28} color={'black'} />}}/>
-                        <Tabs.Screen name='post' options={{ tabBarIcon: ()=> <Octicons name="diff-added" size={28} color="black" /> }}/>
+                        <Tabs.Screen name='post'  listeners={{
+                                                        tabPress: (e) => {
+                                                          e.preventDefault();
+                                                          router.push('/(post)');
+                                                        },
+                                                      }} options={{ tabBarIcon: ()=> <Octicons name="diff-added" size={28} color="black" /> }}/>
                         <Tabs.Screen name='reels' options={{ tabBarIcon: ()=> <MaterialCommunityIcons name="movie-play-outline" size={28} color="black" />}}/>
                         <Tabs.Screen name='profile' options={{ tabBarIcon: ()=> <FontAwesome name="user-circle-o" size={28} color="#959BA3" />}}/>
                     </Tabs>

@@ -5,7 +5,7 @@ import userAuthReducer from '../features/userAuthSlice'
 
 const store = configureStore({
     reducer: {
-        auth : userAuthReducer,
+        auth : userAuthReducer
     },
     // middleware: (getDefaultMiddleware)=> getDefaultMiddleware().concat(reduxLogger)
     

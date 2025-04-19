@@ -20,10 +20,10 @@ export default function AutoSignIn(){
 
     type LoginData = {
         username: string,
-        email: string,
-        mobile: string,
-        image: string | null,
-        password: string
+        email: string | undefined,
+        mobile: string | undefined,
+        image: string | undefined,
+        password: string | undefined
     }
 
     useEffect(()=>{
@@ -54,6 +54,9 @@ export default function AutoSignIn(){
     const signInUser = async (data: LoginData)=>{
         setShowModal(true)
         if(data.email){
+            if(typeof data.password !== 'string'){
+                return
+            }
              const { data: {session} } = await supabase.auth.signInWithPassword({
                                         email: data.email,
                                         password: data.password,
@@ -66,6 +69,9 @@ export default function AutoSignIn(){
                         router.replace('/(home)/explore')
                     }
         }else{
+            if(typeof data.mobile !== 'string'){
+                return
+            }
         const { data: signInMobile, error } = await supabase.auth.signInWithOtp({
                                 phone: data.mobile,
                               })

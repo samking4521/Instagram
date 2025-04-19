@@ -140,7 +140,7 @@ useEffect(()=>{
       uri: fileUri
      }]
           router.push({
-            pathname: '/(nestedScreens)/PostPreview',
+            pathname: './PostPreview',
             params: {media: JSON.stringify(selectImgs), imgResizeMode: false.toString(), galleryMedia: JSON.stringify({
                uri: uri
             })}})
@@ -246,7 +246,7 @@ useEffect(()=>{
        
             <View style={{position: 'absolute', width: '100%', height: '100%'}}>
               <View style={{ paddingHorizontal: 30, paddingTop: StatusBar.currentHeight, flexDirection:'row', justifyContent:'space-between'}}>
-                  <AntDesign onPress={()=> router.push('/(home)/post')} name="close" size={30} color="white" />
+                  <AntDesign onPress={()=> router.back()} name="close" size={30} color="white" />
                   <MaterialCommunityIcons onPress={()=> setFlash(!flash)} name={flash? 'flash': "flash-off"} size={30} color="white" />
                   <AntDesign name="setting" size={30} color="white" />     
              </View>

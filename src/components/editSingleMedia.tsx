@@ -72,7 +72,7 @@ export default function EditSingleMedia({resizeImage,
     const [filterMatrice, setFilterMatrice] = useState(ImageFilters[0].matrice)
     const [editMode, setEditMode] = useState<string | null>(null)
     const filterFlatlistRef = useRef<GestureHandlerFlatlist>(null)
-    const imageUri = selectedItem.edit? selectedItem.uri.replace(/^data:image\/\w+;base64,/, "") : selectedItem.uri
+    const imageUri = selectedItem.edit? selectedItem.uri.replace(/^data:image\/\w+;base64,/, "") : encodeURI(selectedItem.uri)
     const skiaImage = useImage(imageUri); // Replace with your image
     const data = selectedItem.edit? Skia.Data.fromBase64(imageUri) : null
     const encodedSkiaImage = data ? Skia.Image.MakeImageFromEncoded(data) : null
@@ -87,7 +87,6 @@ export default function EditSingleMedia({resizeImage,
     const [appState, setAppState] = useState(AppState.currentState);
     const snapRef = useRef<View | null>(null);
     const [showCloseModalAlert, setShowCloseModalAlert] = useState(false)
-
 
     type TextEdit = {
       fontSize?: number,
